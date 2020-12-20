@@ -15,17 +15,31 @@
 			var container, stats;
 			var camera, controls, scene, renderer;
 			let lastFrame = 0;
-
-			let tubeMaterial = new THREE.MeshPhongMaterial({
-				transparent: true,
-				opacity: 0.8,
-				blending: THREE.AdditiveBlending,
-				color: 0xffffff,
-				side: THREE.BackSide,
-			});
-			let LEDs = [];
+			let cylinders = [];
+			let LEDDistance = 60;
+			let gradientSize = 256;
 			init();
 			requestAnimationFrame( animate );
+
+			function generateTexture(lights, context, offset) {
+
+				// draw gradient
+
+				var gradient = context.createLinearGradient( 0, 0, 0, gradientSize );
+				lights.forEach(light=>{
+					light.color.offsetHSL(offset, 0, 0);
+					gradient.addColorStop(light.position, '#'+light.color.getHexString());
+				});
+
+				context.rect( 0, 0, 1, gradientSize );
+				// gradient.addColorStop(0, '#99ddff'); // light blue
+				// gradient.addColorStop(1, 'transparent'); // dark blue
+				context.fillStyle = gradient;
+				context.fill();
+
+				return context.getImageData(0, 0, 1, gradientSize);
+
+			}
 
 
 			function init() {
@@ -53,7 +67,6 @@
 				// world
 
 				scene = new THREE.Scene();
-				var material =  new THREE.MeshPhongMaterial( { color:0xffffff, flatShading: true } );
 
 
 				// renderer
@@ -70,7 +83,7 @@
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
-				function drawCylinder(vstart, vend,scene){
+				function createCylinder(vstart, vend,scene){
 					var HALF_PI = Math.PI * .5;
 					var distance = vstart.distanceTo(vend);
 					var position  = vend.clone().add(vstart).divideScalar(2);
@@ -83,11 +96,50 @@
 					orientation.lookAt(vstart,vend,new THREE.Vector3(0,1,0));//look at destination
 					offsetRotation.makeRotationX(HALF_PI);//rotate 90 degs on X
 					orientation.multiply(offsetRotation);//combine orientation with rotation transformations
-					cylinder.applyMatrix4(orientation)
+					cylinder.applyMatrix4(orientation);
 
-					var mesh = new THREE.Mesh(cylinder,tubeMaterial);
+					// let distance = vstart.distanceTo(vend);
+					let LEDCount = Math.floor((distance - LEDDistance) / LEDDistance);
+					let offsetDistance = (distance - (LEDCount * LEDDistance)) / 2;
+					let directionVector = vend.clone().sub(vstart).normalize();
+					let offsetVector = directionVector.clone().multiplyScalar(offsetDistance);
+					let LEDVector = directionVector.clone().multiplyScalar(LEDDistance);
+
+					let lights = [{position: 0, color: new THREE.Color(0xffffff)}];
+					for (let idx = 0; idx <= LEDCount; idx++) {
+						lights.push({
+							position: (offsetDistance + idx * LEDDistance) / distance,
+							color: new THREE.Color(`hsl(${360/LEDCount*idx}, 100%, 50%)`)
+						})
+						// let pointLight = new THREE.PointLight(new THREE.Color(`hsl(${360/LEDCount*idx}, 100%, 50%)`));
+						// pointLight.position.copy(vstart.clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
+						// helper = new THREE.PointLightHelper(pointLight, 10);
+						// LEDs.push(helper);
+						// scene.add(pointLight);
+						// scene.add(helper);
+					}
+					lights.push({position: 1, color: new THREE.Color(0xffffff)})
+
+					// create canvas
+					canvas = document.createElement( 'canvas' );
+					canvas.width = 1;
+					canvas.height = gradientSize;
+
+					// get context
+					var context = canvas.getContext( '2d' );
+
+					var texture = new THREE.Texture( generateTexture(lights, context, 0) );
+					texture.needsUpdate = true; // important!
+
+					// material
+				    var material = new THREE.MeshBasicMaterial( { map: texture, transparent: true } );
+
+					var mesh = new THREE.Mesh(cylinder,material);
+
+					mesh.context = context;
+					mesh.lights = lights;
 					mesh.position.copy( position );
-					scene.add(mesh);
+					return mesh;
 				}
 
 
@@ -754,23 +806,10 @@
 						[0,1870.7110791327584,3026.874109167793]
 					]
 				].map(points=>points.map(point=>new THREE.Vector3(...point)));
-				let LEDDistance = 60;
 				uniqueEdges.forEach(ue => {
-					drawCylinder(ue[0], ue[1], scene);
-					let distance = ue[0].distanceTo(ue[1]);
-					let LEDCount = Math.floor((distance - LEDDistance) / LEDDistance);
-					let offsetDistance = (distance - (LEDCount * LEDDistance)) / 2;
-					let directionVector = ue[1].clone().sub(ue[0]).normalize();
-					let offsetVector = directionVector.clone().multiplyScalar(offsetDistance);
-					let LEDVector = directionVector.clone().multiplyScalar(LEDDistance);
-					for (let idx = 0; idx <= LEDCount; idx++) {
-						let pointLight = new THREE.PointLight(new THREE.Color(`hsl(${360/LEDCount*idx}, 100%, 50%)`));
-						pointLight.position.copy(ue[0].clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
-						helper = new THREE.PointLightHelper(pointLight, 10);
-						LEDs.push(helper);
-						// scene.add(pointLight);
-						scene.add(helper)
-					}
+					let cylinder = createCylinder(ue[0], ue[1], scene);
+					cylinders.push(cylinder);
+					scene.add(cylinder);
 				});
 
 				render();
@@ -792,11 +831,20 @@
 				lastFrame = timestamp;
 				requestAnimationFrame( animate );
 				controls.update();
-				LEDs.forEach(helper=>{
-					let led = helper.light;
-					led.color.offsetHSL( diff / 1000, 0, 0 );
-					helper.update();
+				let offset = diff/5000;
+				cylinders.forEach(cylinder=>{
+					cylinder.lights.forEach(light=>{
+						light.color.offsetHSL(offset, 0, 0);
+					});
+					let texture = new THREE.Texture( generateTexture(cylinder.lights, cylinder.context, offset) );
+					texture.needsUpdate = true;
+					cylinder.material.map = texture;
 				});
+				// LEDs.forEach(helper=>{
+				// 	let led = helper.light;
+				// 	led.color.offsetHSL( diff / 1000, 0, 0 );
+				// 	helper.update();
+				// });
 				render();
 			}
 
@@ -806,3 +854,5 @@
 		</script>
 	</body>
 </html>
+
+19:40
