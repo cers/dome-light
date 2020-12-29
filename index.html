@@ -26,7 +26,7 @@
 				color: 0xffffff,
 				side: THREE.BackSide,
 			});
-			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 20 * SCALE );
+			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 60 * SCALE );
 			geometry.computeVertexNormals();
 			const material = new THREE.MeshBasicMaterial({color: 0xffffff});
 
@@ -289,13 +289,19 @@
 				});
 
 				let mergedCylinders = THREE.BufferGeometryUtils.mergeBufferGeometries( cylinders );
-				scene.add(new THREE.Mesh(mergedCylinders, tubeMaterial));
+				// scene.add(new THREE.Mesh(mergedCylinders, tubeMaterial));
 
 				nLights = lights.length;
 
 				const _color = new THREE.Color();
 				color = new Float32Array( nLights * 3 );
-				lights = lights.sort((a,b)=>a.position.x < b.position.x ? 1: -1);
+
+				lights = lights.sort(function(a, b) {
+					// return a.position.x < b.position.x ? 1 : -1
+					let aAngle = Math.atan2(a.position.y, a.position.x);
+					let bAngle = Math.atan2(b.position.y, b.position.x);
+					return aAngle < bAngle ? 1 : -1;
+				});
 
 				for ( let i = 0; i < nLights; i ++ ) {
 
