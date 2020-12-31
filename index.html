@@ -5,17 +5,66 @@
 		<title></title>
 		<style>
 			html, body 	{margin: 0; padding: 0; overflow: hidden;}
+			select {
+				position: absolute;
+				top: 5px;
+				right: 5px;
+			}
+			#videocontainer {
+				position: absolute;
+				top: 5px;
+				left: 5px;
+				max-width: 20vw;
+			}
+			#videocontainer * {
+				width: 100%;
+			}
+			#videoCanvas {
+				position: absolute;
+				left: 0;
+				pointer-events: none;
+			}
 		</style>
 	</head>
 	<body>
 		<div id="container"></div>
+		<div id="videocontainer">
+			<input id="videoPicker" type="file" accept="video/*"/>
+			<video id="video" controls autoplay loop></video>
+			<canvas id="videoCanvas"></canvas>
+		</div>
+		<select id="selector">
+			<option value="0">hue by angle</option>
+			<option value="1">hue by height</option>
+			<option value="2">video unfolded</option>
+			<option value="3">video squished</option>
+		</select>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script>
+			(function localFileVideoPlayer() {
+				'use strict'
+			  let URL = window.URL || window.webkitURL
+			  let playSelectedFile = function (event) {
+			    let file = this.files[0]
+			    let type = file.type
+			    let fileURL = URL.createObjectURL(file)
+			    video.src = fileURL;
+			  }
+			  video.addEventListener('loadedmetadata', function() {
+			    videoCanvas.width = Math.floor(video.clientWidth);
+				videoCanvas.height = Math.floor(video.clientHeight);
+			  }, false)
+			  videoPicker.addEventListener('change', playSelectedFile, false)
+			})();
+		</script>
+		<script>
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
+			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
 			let lastFrame = 0;
 			let cylinders = [];
+			let lights = [];
 			let SCALE = 1/1000;
 			let LEDDistance = 60 * SCALE;
 			let tubeMaterial = new THREE.MeshPhongMaterial({
@@ -25,6 +74,59 @@
 				color: 0xffffff,
 				side: THREE.BackSide,
 			});
+			const vizualisations = [
+				function hueByAngle(offset, timestamp) {
+					const _color = new THREE.Color();
+					for (let i = 0; i < nLights; i++) {
+						let {x, y, angleX} = lights[i].meta;
+						_color.setHSL((angleX/(2*Math.PI) + timestamp/5000) % 1, 1, 0.5);
+						_color.toArray(color, i * 3);
+					}
+				},
+				function hueByHeight(offset, timestamp) {
+					const _color = new THREE.Color();
+					for (let i = 0; i < nLights; i++) {
+						let {x, y, z} = lights[i].position;
+						let height = (minZ + z)/(maxZ-minZ);
+						_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
+						_color.toArray(color, i * 3);
+					}
+				},
+				function videoUnfolded(offset, timestamp) {
+					const _color = new THREE.Color();
+					let ctx = videoCanvas.getContext("2d");
+					ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
+				    let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+					ctx.fillStyle = "white";
+				    let data = Array.from(frame.data).map(v => v/256);
+					for (let i = 0; i < nLights; i++) {
+						let {angleX, angleZ} = lights[i].meta;
+						let H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*videoCanvas.height);
+						let W = Math.floor(videoCanvas.width - (Math.PI+angleX)/(2*Math.PI)*videoCanvas.width);
+						ctx.fillRect(W, H, 1, 1);
+						let idx = H*videoCanvas.width*4+W*4;
+						_color.fromArray(data, idx);
+						_color.toArray(color, i * 3);
+					}
+				},
+				function videoSquished(offset, timestamp) {
+					const _color = new THREE.Color();
+					let ctx = videoCanvas.getContext("2d");
+					ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
+				    let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+					ctx.fillStyle = "white";
+				    let data = Array.from(frame.data).map(v => v/256);
+					for (let i = 0; i < nLights; i++) {
+						let {x, y, z, angleX, angleZ} = lights[i].meta;
+						let H = Math.floor(videoCanvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
+						let W = Math.floor(videoCanvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
+						ctx.fillRect(W, H, 1, 1);
+						let idx = H*videoCanvas.width*4+W*4;
+						_color.fromArray(data, idx);
+						_color.toArray(color, i * 3);
+					}
+				}
+			];
 			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 60 * SCALE );
 			geometry.computeVertexNormals();
 			const material = new THREE.MeshBasicMaterial({color: 0xffffff});
@@ -35,9 +137,11 @@
 
 			function init() {
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 20000 * SCALE );
-				camera.position.x = 0;
-				camera.position.y = -8000 * SCALE;
-				camera.position.z = 5000 * SCALE;
+				// camera.position.x = 0;
+				// camera.position.y = -8000 * SCALE;
+				// camera.position.z = 5000 * SCALE;
+				camera.position.set( 6000 * SCALE, 6000 * SCALE, 0 * SCALE );
+
 
 				renderer = new THREE.WebGLRenderer( { antialias: true } );
 				controls = new THREE.OrbitControls( camera, renderer.domElement );
@@ -51,8 +155,6 @@
 
 				controls.staticMoving = true;
 				controls.dynamicDampingFactor = 0.3;
-
-				controls.keys = [ 65, 83, 68 ];
 
 				controls.addEventListener( 'change', render );
 
@@ -75,7 +177,6 @@
 
 				window.addEventListener( 'resize', onWindowResize, false );
 
-				let lights = [];
 				function createCylinder(vstart, vend, scene){
 					var HALF_PI = Math.PI * .5;
 					var distance = vstart.distanceTo(vend);
@@ -107,6 +208,21 @@
 						lightMesh.position.copy(vstart.clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
 						lightMesh.lookAt(vend);
 						lights.push(lightMesh);
+						let {x:y, y:z, z:x} = lightMesh.position;
+						let angleX = Math.atan2(y, x);
+						let angleZ = Math.atan2(Math.sqrt(x**2 + y**2), z);
+						if (x < minX) minX = x;
+						if (y < minY) minY = y;
+						if (z < minZ) minZ = z;
+						if (angleZ < minAngleZ) minAngleZ = angleZ;
+						if (x > maxX) maxX = x;
+						if (y > maxY) maxY = y;
+						if (z > maxZ) maxZ = z;
+						if (angleZ > maxAngleZ) maxAngleZ = angleZ;
+						lightMesh.meta = {
+							x, y, z,
+							angleX, angleZ
+						}
 					}
 
 					return cylinder;
@@ -280,7 +396,7 @@
 					[[1099.576383614374,-1513.4370545839008,3026.874109167793],[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]],
 					[[1099.576383614374,-1513.4370545839008,3026.874109167793],[1006.0666285542037,-2442.5729733228973,2164.843097504758]],
 					[[621.7833713935172,2567.4341725069353,2164.843097504758],[0,1870.7110791327584,3026.874109167793]]
-				].map(points=>points.map(point=>new THREE.Vector3(...point.map(v=>v * SCALE))));
+				].map(points=>points.map(([a,b,c])=>[b,c,a]).map(point=>new THREE.Vector3(...point.map(v=>v * SCALE))));
 
 				uniqueEdges.forEach(ue => {
 					let cylinder = createCylinder(ue[0], ue[1], scene);
@@ -295,19 +411,6 @@
 				const _color = new THREE.Color();
 				color = new Float32Array( nLights * 3 );
 
-				lights = lights.sort(function(a, b) {
-					// return a.position.x < b.position.x ? 1 : -1
-					let aAngle = Math.atan2(a.position.y, a.position.x);
-					let bAngle = Math.atan2(b.position.y, b.position.x);
-					return aAngle < bAngle ? 1 : -1;
-				});
-
-				for ( let i = 0; i < nLights; i ++ ) {
-
-					_color.setHSL( i / nLights, 1, 0.5 );
-					_color.toArray( color, i * 3 );
-
-				}
 				colorInstancedBufferAttribute = new THREE.InstancedBufferAttribute( color, 3 );
 				geometry.setAttribute( 'color', colorInstancedBufferAttribute );
 				material.vertexColors = true;
@@ -331,7 +434,8 @@
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
-				controls.handleResize();
+			    videoCanvas.width = Math.floor(video.clientWidth);
+				videoCanvas.height = Math.floor(video.clientHeight);
 
 				render();
 			}
@@ -342,13 +446,8 @@
 				lastFrame = timestamp;
 				controls.update();
 				let offset = diff/5000;
+				(vizualisations[selector.value])(offset, timestamp);
 				// do stuff
-				const _color = new THREE.Color();
-				for (let i = 0; i < nLights; i++) {
-					_color.fromArray(color, i * 3);
-					_color.offsetHSL(offset, 0, 0);
-					_color.toArray(color, i * 3);
-				}
 				colorInstancedBufferAttribute.needsUpdate = true;
 				render();
 			}
