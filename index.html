@@ -5,7 +5,7 @@
 		<title></title>
 		<style>
 			html, body 	{margin: 0; padding: 0; overflow: hidden;}
-			select {
+			#selector {
 				position: absolute;
 				top: 5px;
 				right: 5px;
@@ -16,7 +16,7 @@
 				left: 5px;
 				max-width: 20vw;
 			}
-			#videocontainer * {
+			#videocontainer video {
 				width: 100%;
 			}
 			#videoCanvas {
@@ -24,12 +24,23 @@
 				left: 0;
 				pointer-events: none;
 			}
+			#videoSelector {
+				position: absolute;
+				top: 0;
+				right: 0;
+			}
 		</style>
 	</head>
 	<body>
 		<div id="container"></div>
 		<div id="videocontainer">
 			<input id="videoPicker" type="file" accept="video/*"/>
+			<select id="videoSelector">
+				<option value="">None</option>
+				<option value="fire.webm">Fire</option>
+				<option value="mood_lights.webm">Mood lights</option>
+				<option value="trippy_visuals.webm">Trippy visuals</option>
+			</select>
 			<video id="video" controls autoplay loop></video>
 			<canvas id="videoCanvas"></canvas>
 		</div>
@@ -45,18 +56,21 @@
 		<script>
 			(function localFileVideoPlayer() {
 				'use strict'
-			  let URL = window.URL || window.webkitURL
-			  let playSelectedFile = function (event) {
-			    let file = this.files[0]
-			    let type = file.type
-			    let fileURL = URL.createObjectURL(file)
-			    video.src = fileURL;
-			  }
-			  video.addEventListener('loadedmetadata', function() {
-			    videoCanvas.width = Math.floor(video.clientWidth);
-				videoCanvas.height = Math.floor(video.clientHeight);
-			  }, false)
-			  videoPicker.addEventListener('change', playSelectedFile, false)
+				let URL = window.URL || window.webkitURL
+				let playSelectedFile = function (event) {
+					let file = this.files[0]
+					let type = file.type
+					let fileURL = URL.createObjectURL(file)
+					video.src = fileURL;
+				}
+				video.addEventListener('loadedmetadata', function() {
+					videoCanvas.width = Math.floor(video.clientWidth);
+					videoCanvas.height = Math.floor(video.clientHeight);
+				}, false)
+				videoPicker.addEventListener('change', playSelectedFile, false);
+				videoSelector.addEventListener('change', function(){
+					video.src = `${window.location}/videos/${videoSelector.value}`;
+				}, false);
 			})();
 		</script>
 		<script>
@@ -96,9 +110,9 @@
 					const _color = new THREE.Color();
 					let ctx = videoCanvas.getContext("2d");
 					ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-				    let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
 					ctx.fillStyle = "white";
-				    let data = Array.from(frame.data).map(v => v/256);
+					let data = Array.from(frame.data).map(v => v/256);
 					for (let i = 0; i < nLights; i++) {
 						let {angleX, angleZ} = lights[i].meta;
 						let H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*videoCanvas.height);
@@ -113,9 +127,9 @@
 					const _color = new THREE.Color();
 					let ctx = videoCanvas.getContext("2d");
 					ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-				    let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
 					ctx.fillStyle = "white";
-				    let data = Array.from(frame.data).map(v => v/256);
+					let data = Array.from(frame.data).map(v => v/256);
 					for (let i = 0; i < nLights; i++) {
 						let {x, y, z, angleX, angleZ} = lights[i].meta;
 						let H = Math.floor(videoCanvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
@@ -137,9 +151,6 @@
 
 			function init() {
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 20000 * SCALE );
-				// camera.position.x = 0;
-				// camera.position.y = -8000 * SCALE;
-				// camera.position.z = 5000 * SCALE;
 				camera.position.set( 6000 * SCALE, 6000 * SCALE, 0 * SCALE );
 
 
@@ -434,7 +445,7 @@
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
-			    videoCanvas.width = Math.floor(video.clientWidth);
+				videoCanvas.width = Math.floor(video.clientWidth);
 				videoCanvas.height = Math.floor(video.clientHeight);
 
 				render();
