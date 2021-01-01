@@ -51,6 +51,7 @@
 			<option value="3">video squished</option>
 			<option value="4">Random walk white</option>
 			<option value="5">Random walk colors</option>
+			<option value="6">Random walk single color</option>
 		</select>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
@@ -143,15 +144,19 @@
 						_color.toArray(color, i * 3);
 					}
 				},
-				randomWalk = function randomWalk(offset, timestamp, inColor) {
+				randomWalk = function randomWalk(offset, timestamp, inColor, individualColors) {
 					const _color = new THREE.Color();
 					color.forEach((v, idx)=>color[idx]=v*0.98);
 					particles.forEach(particle=>{
 						if (inColor) {
-							_color.fromArray(color, particle.position.meta.index * 3);
-							_color.add(particle.color);
+							if (individualColors) {
+								_color.fromArray(color, particle.position.meta.index * 3);
+								_color.add(particle.color);
+								particle.color.offsetHSL(0.001, 0, 0);
+							} else {
+								_color.copy(particles[0].color);
+							}
 							_color.toArray(color, particle.position.meta.index * 3);
-							particle.color.offsetHSL(0.001, 0, 0);
 						} else {
 							_color.fromArray([1,1,1]);
 							_color.toArray(color, particle.position.meta.index * 3);
@@ -169,10 +174,16 @@
 						particle.direction = targetLight.position.clone().sub(particle.position.position).add(new THREE.Vector3(Math.random()*0.04-0.02,Math.random()*0.04-0.02, Math.random()*0.04-0.02)).normalize().multiplyScalar(0.06);
 						particle.position = targetLight;
 					});
+					if (inColor && !individualColors) {
+						particles[0].color.offsetHSL(0.001, 0, 0);
+					}
 
 				},
 				function randomWalkColor(offset, timestamp) {
-					randomWalk(offset, timestamp, true);
+					randomWalk(offset, timestamp, true, true);
+				},
+				function randomWalkSingleColor(offset, timestamp) {
+					randomWalk(offset, timestamp, true, false);
 				},
 
 			];
