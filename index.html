@@ -49,6 +49,8 @@
 			<option value="1">hue by height</option>
 			<option value="2">video unfolded</option>
 			<option value="3">video squished</option>
+			<option value="4">Random walk white</option>
+			<option value="5">Random walk colors</option>
 		</select>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
@@ -74,6 +76,7 @@
 			})();
 		</script>
 		<script>
+			let particles = [];
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
 			let lastFrame = 0;
@@ -139,7 +142,39 @@
 						_color.fromArray(data, idx);
 						_color.toArray(color, i * 3);
 					}
-				}
+				},
+				randomWalk = function randomWalk(offset, timestamp, inColor) {
+					const _color = new THREE.Color();
+					color.forEach((v, idx)=>color[idx]=v*0.98);
+					particles.forEach(particle=>{
+						if (inColor) {
+							_color.fromArray(color, particle.position.meta.index * 3);
+							_color.add(particle.color);
+							_color.toArray(color, particle.position.meta.index * 3);
+							particle.color.offsetHSL(0.001, 0, 0);
+						} else {
+							_color.fromArray([1,1,1]);
+							_color.toArray(color, particle.position.meta.index * 3);
+						}
+						let targetPosition = particle.position.position.clone().add(particle.direction);
+						let distance = Number.POSITIVE_INFINITY;
+						let targetLight = null;
+						for (let idx = 0; idx < lights.length; idx++) {
+							let newDistance = lights[idx].position.distanceTo(targetPosition);
+							if (newDistance < distance && lights[idx].uuid != particle.position.uuid ) {
+								targetLight = lights[idx];
+								distance = newDistance;
+							}
+						}
+						particle.direction = targetLight.position.clone().sub(particle.position.position).add(new THREE.Vector3(Math.random()*0.04-0.02,Math.random()*0.04-0.02, Math.random()*0.04-0.02)).normalize().multiplyScalar(0.06);
+						particle.position = targetLight;
+					});
+
+				},
+				function randomWalkColor(offset, timestamp) {
+					randomWalk(offset, timestamp, true);
+				},
+
 			];
 			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 60 * SCALE );
 			geometry.computeVertexNormals();
@@ -432,9 +467,19 @@
 					light.updateMatrix();
 					lightInstances.setMatrixAt(idx, light.matrix);
 					light.material.dispose();
+					light.meta.index = idx;
 				});
 
 				scene.add( lightInstances );
+
+
+				for (let idx = 0; idx < 15; idx++) {
+					particles.push({
+						position: lights[Math.floor(Math.random()*lights.length)],
+						direction: new THREE.Vector3(0.1, 0, 0),
+						color: new THREE.Color().setHSL(Math.random(), 1, 0.5)
+					});
+				}
 
 				// render();
 			}
