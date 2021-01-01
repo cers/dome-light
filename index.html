@@ -105,7 +105,7 @@
 					const _color = new THREE.Color();
 					for (let i = 0; i < nLights; i++) {
 						let {x, y, z} = lights[i].position;
-						let height = (minZ + z)/(maxZ-minZ);
+						let height = (minY + y)/(maxY-minY);
 						_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
 						_color.toArray(color, i * 3);
 					}
