@@ -71,7 +71,7 @@
 			<div data-tool="randomWalk">
 				<dl>
 					<dt>Amount</dt>
-					<dd><input type="range" id="nWalkers" min="1" max="100" value="15"/></dd>
+					<dd><input type="range" id="nWalkers" min="1" max="100" value="1"/></dd>
 					<dt>Monochrome</dt>
 					<dd>
 						<input type="checkbox" id="walkerMonochrome">
@@ -134,9 +134,10 @@
 			function updateParticles() {
 				if (nWalkers.value > particles.length) {
 					for (let idx = particles.length; idx < nWalkers.value; idx++) {
+						let light = lights[Math.floor(Math.random()*lights.length)];
 						particles.push({
-							position: lights[Math.floor(Math.random()*lights.length)],
-							direction: new THREE.Vector3(0.1, 0, 0),
+							position: light,
+							direction: light.meta.connections.entries().next().value[0],
 							color: new THREE.Color().setHSL(Math.random(), 1, 0.5)
 						});
 					}
@@ -205,18 +206,12 @@
 							particle.color.offsetHSL(0.001, 0, 0);
 						}
 						_color.toArray(color, particle.position.meta.index * 3);
-						let targetPosition = particle.position.position.clone().add(particle.direction);
-						let distance = Number.POSITIVE_INFINITY;
-						let targetLight = null;
-						for (let idx = 0; idx < lights.length; idx++) {
-							let newDistance = lights[idx].position.distanceTo(targetPosition);
-							if (newDistance < distance && lights[idx].uuid != particle.position.uuid ) {
-								targetLight = lights[idx];
-								distance = newDistance;
-							}
+						let nextLight = particle.position.meta.connections.get(particle.direction);
+						if (!nextLight.meta.connections.get(particle.direction)) {
+							let possible = Array.from(nextLight.meta.connections.entries()).filter(([dir, light]) => light.uuid != particle.position.uuid);
+							[particle.direction, _] = possible[Math.floor(Math.random() * possible.length)];
 						}
-						particle.direction = targetLight.position.clone().sub(particle.position.position).add(new THREE.Vector3(Math.random()*0.04-0.02,Math.random()*0.04-0.02, Math.random()*0.04-0.02)).normalize().multiplyScalar(0.06);
-						particle.position = targetLight;
+						particle.position = nextLight;
 					});
 				},
 			};
@@ -293,6 +288,8 @@
 					let LEDVector = directionVector.clone().multiplyScalar(LEDDistance);
 
 					// construct "lights" for this particular cylinder. Later we convert these to instances.
+					let directionA = Symbol();
+					let directionB = Symbol();
 					for (let idx = 0; idx <= LEDCount; idx++) {
 						let lightMesh = new THREE.Mesh(geometry, material);
 						lightMesh.position.copy(vstart.clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
@@ -311,7 +308,13 @@
 						if (angleZ > maxAngleZ) maxAngleZ = angleZ;
 						lightMesh.meta = {
 							x, y, z,
-							angleX, angleZ
+							angleX, angleZ,
+							connections: new Map()
+						};
+						// create connections within each tube. The rest will be detected later
+						if (idx > 0) {
+							lightMesh.meta.connections.set(directionA, lights[lights.length - 2]);
+							lights[lights.length - 2].meta.connections.set(directionB, lightMesh);
 						}
 					}
 
@@ -513,6 +516,15 @@
 					light.material.dispose();
 					light.meta.index = idx;
 				});
+
+				// find LEDs with only one connection (must be an end)
+				// then find all other end LEDs that are close to it, anc connect them
+				let endLEDs = lights.filter(l => l.meta.connections.size == 1);
+				for (let idx = 0; idx < endLEDs.length; idx++) {
+					let currentLED = endLEDs[idx];
+					let closeLEDs = endLEDs.filter(led =>  currentLED.position.distanceTo(led.position) <= LEDDistance * 2 && led.uuid != currentLED.uuid);
+					closeLEDs.forEach(led => currentLED.meta.connections.set(led.meta.connections.entries().next().value[0], led));
+				}
 
 				updateParticles();
 
