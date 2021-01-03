@@ -75,7 +75,7 @@
 					<dt>Monochrome</dt>
 					<dd>
 						<input type="checkbox" id="walkerMonochrome">
-						<input type="color" id="walkerColor">
+						<input type="color" id="walkerColor" value="#ffffff">
 					</dd>
 				</dl>
 			</div>
@@ -145,7 +145,7 @@
 					particles.length = nWalkers.value;
 				}
 			}
-			nWalkers.addEventListener("change", updateParticles, false);
+			nWalkers.addEventListener("input", updateParticles, false);
 			const vizualisations = {
 				hueRotate: function hueByAngle(offset, timestamp) {
 					const _color = new THREE.Color();
