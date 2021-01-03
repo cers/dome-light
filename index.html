@@ -10,11 +10,11 @@
 				top: 5px;
 				right: 5px;
 			}
-			#videocontainer {
+			#configuration {
 				position: absolute;
 				top: 5px;
 				left: 5px;
-				max-width: 20vw;
+				width: 20vw;
 			}
 			#videocontainer video {
 				width: 100%;
@@ -29,29 +29,61 @@
 				top: 0;
 				right: 0;
 			}
+			#configuration > * {
+				display: none;
+			}
+			#configuration .active {
+				display: block;
+				position: absolute;
+				top: 5px;
+				left: 5px;
+				background: rgba(255, 255, 255, 0.5);
+			}
 		</style>
 	</head>
 	<body>
 		<div id="container"></div>
-		<div id="videocontainer">
-			<input id="videoPicker" type="file" accept="video/*"/>
-			<select id="videoSelector">
-				<option value="">None</option>
-				<option value="fire.webm">Fire</option>
-				<option value="mood_lights.webm">Mood lights</option>
-				<option value="trippy_visuals.webm">Trippy visuals</option>
-			</select>
-			<video id="video" controls autoplay loop></video>
-			<canvas id="videoCanvas"></canvas>
+		<div id="configuration">
+			<div data-tool="hueRotate">
+				<select id="hueRotation">
+					<option value="height">Height</option>
+					<option value="angleX">Angle from X</option>
+					<option value="angleZ">Angle from Z</option>
+				</select>
+			</div>
+			<div data-tool="video">
+				<div id="videocontainer">
+					<input id="videoPicker" type="file" accept="video/*"/>
+					<select id="videoSelector">
+						<option value="">None</option>
+						<option value="fire.webm">Fire</option>
+						<option value="mood_lights.webm">Mood lights</option>
+						<option value="trippy_visuals.webm">Trippy visuals</option>
+					</select>
+					<video id="videoPlayer" controls autoplay loop></video>
+					<canvas id="videoCanvas"></canvas>
+					<select id="videoMapping">
+						<option value="unfolded">Unfolded</option>
+						<option value="squished">Squished</option>
+					</select>
+				</div>
+			</div>
+			<div data-tool="randomWalk">
+				<dl>
+					<dt>Amount</dt>
+					<dd><input type="range" id="nWalkers" min="1" max="100" value="15"/></dd>
+					<dt>Monochrome</dt>
+					<dd>
+						<input type="checkbox" id="walkerMonochrome">
+						<input type="color" id="walkerColor">
+					</dd>
+				</dl>
+			</div>
 		</div>
 		<select id="selector">
-			<option value="0">hue by angle</option>
-			<option value="1">hue by height</option>
-			<option value="2">video unfolded</option>
-			<option value="3">video squished</option>
-			<option value="4">Random walk white</option>
-			<option value="5">Random walk colors</option>
-			<option value="6">Random walk single color</option>
+			<option value="hueRotate">Hue rotation</option>
+			<option value="video">Video</option>
+			<option value="randomWalk">Random walk</option>
 		</select>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
@@ -64,15 +96,15 @@
 					let file = this.files[0]
 					let type = file.type
 					let fileURL = URL.createObjectURL(file)
-					video.src = fileURL;
+					videoPlayer.src = fileURL;
 				}
-				video.addEventListener('loadedmetadata', function() {
-					videoCanvas.width = Math.floor(video.clientWidth);
-					videoCanvas.height = Math.floor(video.clientHeight);
+				videoPlayer.addEventListener('loadedmetadata', function() {
+					videoCanvas.width = Math.floor(videoPlayer.clientWidth);
+					videoCanvas.height = Math.floor(videoPlayer.clientHeight);
 				}, false)
 				videoPicker.addEventListener('change', playSelectedFile, false);
 				videoSelector.addEventListener('change', function(){
-					video.src = `${window.location}/videos/${videoSelector.value}`;
+					videoPlayer.src = `${window.location}/videos/${videoSelector.value}`;
 				}, false);
 			})();
 		</script>
@@ -92,75 +124,87 @@
 				color: 0xffffff,
 				side: THREE.BackSide,
 			});
-			const vizualisations = [
-				function hueByAngle(offset, timestamp) {
-					const _color = new THREE.Color();
-					for (let i = 0; i < nLights; i++) {
-						let {x, y, angleX} = lights[i].meta;
-						_color.setHSL((angleX/(2*Math.PI) + timestamp/5000) % 1, 1, 0.5);
-						_color.toArray(color, i * 3);
+
+			function updateTools() {
+				configuration.querySelector(".active")?.classList.remove("active");
+				configuration.querySelector(`[data-tool=${selector.value}]`)?.classList.add("active");
+			};
+			updateTools();
+			selector.addEventListener("change", updateTools, false);
+			function updateParticles() {
+				if (nWalkers.value > particles.length) {
+					for (let idx = particles.length; idx < nWalkers.value; idx++) {
+						particles.push({
+							position: lights[Math.floor(Math.random()*lights.length)],
+							direction: new THREE.Vector3(0.1, 0, 0),
+							color: new THREE.Color().setHSL(Math.random(), 1, 0.5)
+						});
 					}
-				},
-				function hueByHeight(offset, timestamp) {
+				} else {
+					particles.length = nWalkers.value;
+				}
+			}
+			nWalkers.addEventListener("change", updateParticles, false);
+			const vizualisations = {
+				hueRotate: function hueByAngle(offset, timestamp) {
 					const _color = new THREE.Color();
-					for (let i = 0; i < nLights; i++) {
-						let {x, y, z} = lights[i].position;
-						let height = (minY + y)/(maxY-minY);
-						_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
-						_color.toArray(color, i * 3);
-					}
-				},
-				function videoUnfolded(offset, timestamp) {
-					const _color = new THREE.Color();
-					let ctx = videoCanvas.getContext("2d");
-					ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
-					ctx.fillStyle = "white";
-					let data = Array.from(frame.data).map(v => v/256);
-					for (let i = 0; i < nLights; i++) {
-						let {angleX, angleZ} = lights[i].meta;
-						let H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*videoCanvas.height);
-						let W = Math.floor(videoCanvas.width - (Math.PI+angleX)/(2*Math.PI)*videoCanvas.width);
-						ctx.fillRect(W, H, 1, 1);
-						let idx = H*videoCanvas.width*4+W*4;
-						_color.fromArray(data, idx);
-						_color.toArray(color, i * 3);
-					}
-				},
-				function videoSquished(offset, timestamp) {
-					const _color = new THREE.Color();
-					let ctx = videoCanvas.getContext("2d");
-					ctx.drawImage(video, 0, 0, videoCanvas.width, videoCanvas.height);
-					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
-					ctx.fillStyle = "white";
-					let data = Array.from(frame.data).map(v => v/256);
 					for (let i = 0; i < nLights; i++) {
 						let {x, y, z, angleX, angleZ} = lights[i].meta;
-						let H = Math.floor(videoCanvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
-						let W = Math.floor(videoCanvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
+						switch (hueRotation.value) {
+							case "angleX":
+								_color.setHSL((angleX/(2*Math.PI) + timestamp/5000) % 1, 1, 0.5);
+								break;
+							case "angleZ":
+								_color.setHSL((angleZ/(2*Math.PI) + timestamp/5000) % 1, 1, 0.5);
+								break;
+							case "height":
+								let height = (minZ + z)/(maxZ-minZ);
+								_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
+						}
+						_color.toArray(color, i * 3);
+					}
+				},
+				video: function video(offset, timestamp) {
+					const _color = new THREE.Color();
+					let ctx = videoCanvas.getContext("2d");
+					ctx.drawImage(videoPlayer, 0, 0, videoCanvas.width, videoCanvas.height);
+					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
+					ctx.fillStyle = "white";
+					let data = Array.from(frame.data).map(v => v/256);
+					let H, W;
+					for (let i = 0; i < nLights; i++) {
+						switch (videoMapping.value) {
+							case "unfolded": {
+									let {angleX, angleZ} = lights[i].meta;
+									H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*videoCanvas.height);
+									W = Math.floor(videoCanvas.width - (Math.PI+angleX)/(2*Math.PI)*videoCanvas.width);
+								}
+								break;
+							case "squished": {
+									let {x, y, z, angleX, angleZ} = lights[i].meta;
+									H = Math.floor(videoCanvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
+									W = Math.floor(videoCanvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
+								}
+								break;
+						}
 						ctx.fillRect(W, H, 1, 1);
 						let idx = H*videoCanvas.width*4+W*4;
 						_color.fromArray(data, idx);
 						_color.toArray(color, i * 3);
 					}
 				},
-				randomWalk = function randomWalk(offset, timestamp, inColor, individualColors) {
+				randomWalk: function randomWalk(offset, timestamp) {
 					const _color = new THREE.Color();
 					color.forEach((v, idx)=>color[idx]=v*0.98);
 					particles.forEach(particle=>{
-						if (inColor) {
-							if (individualColors) {
-								_color.fromArray(color, particle.position.meta.index * 3);
-								_color.add(particle.color);
-								particle.color.offsetHSL(0.001, 0, 0);
-							} else {
-								_color.copy(particles[0].color);
-							}
-							_color.toArray(color, particle.position.meta.index * 3);
+						if (walkerMonochrome.checked) {
+							_color.setStyle(walkerColor.value);
 						} else {
-							_color.fromArray([1,1,1]);
-							_color.toArray(color, particle.position.meta.index * 3);
+							_color.fromArray(color, particle.position.meta.index * 3);
+							_color.add(particle.color);
+							particle.color.offsetHSL(0.001, 0, 0);
 						}
+						_color.toArray(color, particle.position.meta.index * 3);
 						let targetPosition = particle.position.position.clone().add(particle.direction);
 						let distance = Number.POSITIVE_INFINITY;
 						let targetLight = null;
@@ -174,19 +218,8 @@
 						particle.direction = targetLight.position.clone().sub(particle.position.position).add(new THREE.Vector3(Math.random()*0.04-0.02,Math.random()*0.04-0.02, Math.random()*0.04-0.02)).normalize().multiplyScalar(0.06);
 						particle.position = targetLight;
 					});
-					if (inColor && !individualColors) {
-						particles[0].color.offsetHSL(0.001, 0, 0);
-					}
-
 				},
-				function randomWalkColor(offset, timestamp) {
-					randomWalk(offset, timestamp, true, true);
-				},
-				function randomWalkSingleColor(offset, timestamp) {
-					randomWalk(offset, timestamp, true, false);
-				},
-
-			];
+			};
 			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 60 * SCALE );
 			geometry.computeVertexNormals();
 			const material = new THREE.MeshBasicMaterial({color: 0xffffff});
@@ -481,16 +514,9 @@
 					light.meta.index = idx;
 				});
 
+				updateParticles();
+
 				scene.add( lightInstances );
-
-
-				for (let idx = 0; idx < 15; idx++) {
-					particles.push({
-						position: lights[Math.floor(Math.random()*lights.length)],
-						direction: new THREE.Vector3(0.1, 0, 0),
-						color: new THREE.Color().setHSL(Math.random(), 1, 0.5)
-					});
-				}
 
 				// render();
 			}
@@ -501,8 +527,8 @@
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
-				videoCanvas.width = Math.floor(video.clientWidth);
-				videoCanvas.height = Math.floor(video.clientHeight);
+				videoCanvas.width = Math.floor(videoPlayer.clientWidth);
+				videoCanvas.height = Math.floor(videoPlayer.clientHeight);
 
 				render();
 			}
