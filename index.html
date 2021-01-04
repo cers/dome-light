@@ -17,12 +17,16 @@
 				left: 5px;
 				width: 20vw;
 			}
+			#videocontainer {
+				position: relative;
+			}
 			#videocontainer video {
 				width: 100%;
 			}
 			#videoCanvas {
 				position: absolute;
 				left: 0;
+				top: 0;
 				pointer-events: none;
 			}
 			#videoSelector {
@@ -57,14 +61,14 @@
 				</select>
 			</div>
 			<div data-tool="video">
+				<input id="videoPicker" type="file" accept="video/*"/>
+				<select id="videoSelector">
+					<option value="">None</option>
+					<option value="fire.webm">Fire</option>
+					<option value="mood_lights.webm">Mood lights</option>
+					<option value="trippy_visuals.webm">Trippy visuals</option>
+				</select>
 				<div id="videocontainer">
-					<input id="videoPicker" type="file" accept="video/*"/>
-					<select id="videoSelector">
-						<option value="">None</option>
-						<option value="fire.webm">Fire</option>
-						<option value="mood_lights.webm">Mood lights</option>
-						<option value="trippy_visuals.webm">Trippy visuals</option>
-					</select>
 					<video id="videoPlayer" controls autoplay loop></video>
 					<canvas id="videoCanvas"></canvas>
 					<select id="videoMapping">
