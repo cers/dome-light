@@ -72,6 +72,8 @@
 				<dl>
 					<dt>Amount</dt>
 					<dd><input type="range" id="nWalkers" min="1" max="100" value="1"/></dd>
+					<dt>Halflife</dt>
+					<dd><input type="range" id="walkerHalflife" min="0" max="1" value="0.98" step="0.01"/></dd>
 					<dt>Monochrome</dt>
 					<dd>
 						<input type="checkbox" id="walkerMonochrome">
@@ -196,7 +198,7 @@
 				},
 				randomWalk: function randomWalk(offset, timestamp) {
 					const _color = new THREE.Color();
-					color.forEach((v, idx)=>color[idx]=v*0.98);
+					color.forEach((v, idx)=>color[idx]=v*walkerHalflife.value);
 					particles.forEach(particle=>{
 						if (walkerMonochrome.checked) {
 							_color.setStyle(walkerColor.value);
