@@ -94,6 +94,8 @@
 					<dd><input type="color" id="snakeColor" value="#ffffff"></dd>
 					<dt>Food Color</dt>
 					<dd><input type="color" id="snakeFoodColor" value="#ffffff"></dd>
+					<dt>Follow snake with camera</dt>
+					<dd><input type="checkbox" id="snakeFollow"></dd>
 				</dl>
 			</div>
 		</div>
@@ -276,6 +278,11 @@
 						snake.food.splice(foodCollision, 1);
 					} else {
 						snake.positions.pop();
+					}
+					if (snakeFollow.checked) {
+						let distanceToCamera = camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
+						camera.position.copy(snakeHead.position.clone().normalize().multiplyScalar(distanceToCamera));
+						camera.lookAt(new THREE.Vector3(0, 0, 0));
 					}
 				}
 			};
