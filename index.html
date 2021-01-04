@@ -96,6 +96,10 @@
 					<dd><input type="color" id="snakeFoodColor" value="#ffffff"></dd>
 					<dt>Follow snake with camera</dt>
 					<dd><input type="checkbox" id="snakeFollow"></dd>
+					<dt>Preserve colors</dt>
+					<dd><input type="checkbox" id="snakePreserveColor"></dd>
+					<dt>Preserve order</dt>
+					<dd><input type="checkbox" id="snakePreserveOrder"></dd>
 				</dl>
 			</div>
 		</div>
@@ -136,7 +140,7 @@
 			})();
 		</script>
 		<script>
-			let particles = [], snake = {positions: [], direction: null, food: []};
+			let particles = [], snake = {positions: [], direction: null, food: {positions: [], colors: []}, colors: []};
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
 			let lastFrame = 0;
@@ -247,20 +251,39 @@
 					if (snake.positions.length == 0) {
 						initSnake();
 					}
-					if (snake.food.length > nSnakeFood.value) {
-						snake.food.length = nSnakeFood.value;
+					if (snake.food.positions.length > nSnakeFood.value) {
+						snake.food.positions.length = nSnakeFood.value;
+						snake.food.colors.length = nSnakeFood.value;
 					}
-					while (snake.food.length < nSnakeFood.value) {
-						let possibleFoodPositions = lights.filter(l => !(l.uuid in snake.positions.map(p => p.uuid)) && !(l.uuid in snake.food.map(p => p.uuid)));
-						snake.food.push(lights[Math.floor(Math.random() * lights.length)]);
+					while (snake.food.positions.length < nSnakeFood.value) {
+						let possibleFoodPositions = lights.filter(l => !(l.uuid in snake.positions.map(p => p.uuid)) && !(l.uuid in snake.food.positions.map(p => p.uuid)));
+						snake.food.positions.push(lights[Math.floor(Math.random() * lights.length)]);
+						let newColor = new THREE.Color();
+						newColor.setHSL(Math.random(), 1, 0.5);
+						snake.food.colors.push(newColor)
 					}
-					const _color = new THREE.Color();
+					let _color = new THREE.Color();
 					_color.setStyle(snakeFoodColor.value);
-					snake.food.forEach(light => {
+					let snakeColors = [...snake.colors];
+					if (!snakePreserveOrder.checked) {
+						snakeColors.sort(function(a,b) {
+							let ac = {}, bc = {};
+							a.getHSL(ac);
+							b.getHSL(bc);
+							return ac.h < bc.h ? 1 : -1;
+						});
+					}
+					snake.food.positions.forEach((light, index) => {
+						if (snakePreserveColor.checked) {
+							_color = snake.food.colors[index].clone();
+						}
 						_color.toArray(color, light.meta.index * 3);
 					});
 					_color.setStyle(snakeColor.value);
-					snake.positions.forEach(light => {
+					snake.positions.forEach((light, index) => {
+						if (snakePreserveColor.checked) {
+							_color = snakeColors[index].clone();
+						}
 						_color.toArray(color, light.meta.index * 3);
 					});
 					let snakeHead = snake.positions[0];
@@ -273,9 +296,11 @@
 						[snake.direction, _] = possible[Math.floor(Math.random() * possible.length)];
 					}
 					snake.positions.unshift(nextPosition);
-					let foodCollision = snake.food.indexOf(nextPosition);
+					let foodCollision = snake.food.positions.indexOf(nextPosition);
 					if (foodCollision > -1) {
-						snake.food.splice(foodCollision, 1);
+						snake.colors.unshift(snake.food.colors[foodCollision]);
+						snake.food.positions.splice(foodCollision, 1);
+						snake.food.colors.splice(foodCollision, 1);
 					} else {
 						snake.positions.pop();
 					}
@@ -291,6 +316,9 @@
 				let startingLength = 5;
 				let start = lights[Math.floor(Math.random() * lights.length)];
 				snake.positions = [start];
+				let newColor = new THREE.Color();
+				newColor.setHSL(Math.random(), 1, 0.5);
+				snake.colors = [newColor];
 				[snake.direction, tailDirection, ..._] = Array.from(start.meta.connections.entries()).map(([dir, _])=>dir);
 				while (snake.positions.length < startingLength) {
 					let prevLight = snake.positions[snake.positions.length - 1];
@@ -300,6 +328,9 @@
 						[tailDirection, nextLight] = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
 					}
 					snake.positions.push(nextLight);
+					let newColor = new THREE.Color();
+					newColor.setHSL(Math.random(), 1, 0.5);
+					snake.colors.push(newColor);
 				}
 			}
 
