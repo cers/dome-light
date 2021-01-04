@@ -81,11 +81,22 @@
 					</dd>
 				</dl>
 			</div>
+			<div data-tool="snakeGame">
+				<dl>
+					<dt>Amount of food</dt>
+					<dd><input type="range" id="nSnakeFood" min="1" max="100" value="1"/></dd>
+					<dt>Snake Color</dt>
+					<input type="color" id="snakeColor" value="#ffffff">
+					<dt>Food Color</dt>
+					<input type="color" id="snakeFoodColor" value="#ffffff">
+				</dl>
+			</div>
 		</div>
 		<select id="selector">
 			<option value="hueRotate">Hue rotation</option>
 			<option value="video">Video</option>
 			<option value="randomWalk">Random walk</option>
+			<option value="snakeGame">Snake</option>
 		</select>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
@@ -111,7 +122,7 @@
 			})();
 		</script>
 		<script>
-			let particles = [];
+			let particles = [], snake = {positions: [], direction: null, food: []};
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
 			let lastFrame = 0;
@@ -216,7 +227,62 @@
 						particle.position = nextLight;
 					});
 				},
+				snakeGame: function snakeGame(offset, timestamp) {
+					color.fill(0.05);
+					if (snake.positions.length == 0) {
+						initSnake();
+					}
+					if (snake.food.length > nSnakeFood.value) {
+						snake.food.length = nSnakeFood.value;
+					}
+					while (snake.food.length < nSnakeFood.value) {
+						let possibleFoodPositions = lights.filter(l => !(l.uuid in snake.positions.map(p => p.uuid)) && !(l.uuid in snake.food.map(p => p.uuid)));
+						snake.food.push(lights[Math.floor(Math.random() * lights.length)]);
+					}
+					const _color = new THREE.Color();
+					_color.setStyle(snakeFoodColor.value);
+					snake.food.forEach(light => {
+						_color.toArray(color, light.meta.index * 3);
+					});
+					_color.setStyle(snakeColor.value);
+					snake.positions.forEach(light => {
+						_color.toArray(color, light.meta.index * 3);
+					});
+					let snakeHead = snake.positions[0];
+					let nextPosition = snakeHead.meta.connections.get(snake.direction);
+					if (snake.positions.map(p => p.uuid).indexOf(nextPosition.uuid) > -1) {
+						initSnake();
+					}
+					if (!nextPosition.meta.connections.get(snake.direction)) {
+						let possible = Array.from(nextPosition.meta.connections.entries()).filter(([dir, light]) => light.uuid != snakeHead.uuid);
+						[snake.direction, _] = possible[Math.floor(Math.random() * possible.length)];
+					}
+					snake.positions.unshift(nextPosition);
+					let foodCollision = snake.food.indexOf(nextPosition);
+					if (foodCollision > -1) {
+						snake.food.splice(foodCollision, 1);
+					} else {
+						snake.positions.pop();
+					}
+				}
 			};
+
+			function initSnake() {
+				let startingLength = 5;
+				let start = lights[Math.floor(Math.random() * lights.length)];
+				snake.positions = [start];
+				[snake.direction, tailDirection, ..._] = Array.from(start.meta.connections.entries()).map(([dir, _])=>dir);
+				while (snake.positions.length < startingLength) {
+					let prevLight = snake.positions[snake.positions.length - 1];
+					let nextLight = prevLight.meta.connections.get(tailDirection);
+					if (!nextLight) {
+						let possibleDirections = Array.from(prevLight.meta.connections.entries()).filter(([dir, light])=>light.uuid != prevLight.uuid);
+						[tailDirection, nextLight] = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+					}
+					snake.positions.push(nextLight);
+				}
+			}
+
 			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 60 * SCALE );
 			geometry.computeVertexNormals();
 			const material = new THREE.MeshBasicMaterial({color: 0xffffff});
