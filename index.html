@@ -5,10 +5,11 @@
 		<title></title>
 		<style>
 			html, body 	{margin: 0; padding: 0; overflow: hidden;}
-			#selector {
+			#effects {
 				position: absolute;
 				top: 5px;
 				right: 5px;
+				background: rgba(255, 255, 255, 0.5);
 			}
 			#configuration {
 				position: absolute;
@@ -92,12 +93,19 @@
 				</dl>
 			</div>
 		</div>
-		<select id="selector">
-			<option value="hueRotate">Hue rotation</option>
-			<option value="video">Video</option>
-			<option value="randomWalk">Random walk</option>
-			<option value="snakeGame">Snake</option>
-		</select>
+		<dl id="effects">
+			<dt>Program</dt>
+			<dd>
+				<select id="selector">
+					<option value="hueRotate">Hue rotation</option>
+					<option value="video">Video</option>
+					<option value="randomWalk">Random walk</option>
+					<option value="snakeGame">Snake</option>
+				</select>
+			</dd>
+			<dt>Auto rotate</dt>
+			<dd><input type="checkbox" id="autoRotate"></dd>
+		</dl>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
 		<script src="OrbitControls.js"></script>
@@ -144,6 +152,7 @@
 			};
 			updateTools();
 			selector.addEventListener("change", updateTools, false);
+			autoRotate.addEventListener("change", setAutoRotate, false);
 			function updateParticles() {
 				if (nWalkers.value > particles.length) {
 					for (let idx = particles.length; idx < nWalkers.value; idx++) {
@@ -290,6 +299,9 @@
 			init();
 			requestAnimationFrame( animate );
 
+			function setAutoRotate() {
+				controls.autoRotate = autoRotate.checked;
+			}
 
 			function init() {
 				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 20000 * SCALE );
@@ -306,8 +318,11 @@
 				controls.noZoom = false;
 				controls.noPan = false;
 
+
 				controls.staticMoving = true;
 				controls.dynamicDampingFactor = 0.3;
+
+				setAutoRotate();
 
 				controls.addEventListener( 'change', render );
 
