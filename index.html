@@ -127,6 +127,7 @@
 			function resizeVideoCanvas() {
 				videoCanvas.width = Math.floor(videoPlayer.clientWidth);
 				videoCanvas.height = Math.floor(videoPlayer.clientHeight);
+				videoMappings = {};
 			}
 			function setVideoFile() {
 				videoPlayer.src = `${window.location.href.split("?")[0]}/videos/${videoSelector.value}`;
@@ -152,6 +153,7 @@
 		<script>
 			let particles = [], snake = {positions: [], direction: null, food: {positions: [], colors: []}, colors: []};
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
+			let videoMappings = {};
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
 			let lastFrame = 0;
 			let cylinders = [];
@@ -212,9 +214,16 @@
 					let ctx = videoCanvas.getContext("2d");
 					ctx.drawImage(videoPlayer, 0, 0, videoCanvas.width, videoCanvas.height);
 					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
-					ctx.fillStyle = "white";
 					let data = Array.from(frame.data).map(v => v/256);
 					let H, W;
+					let mappingCtx = null;
+					if (!videoMappings[videoMapping.value]) {
+						let mapping = videoMappings[videoMapping.value] = document.createElement("canvas");
+						mapping.width = videoCanvas.width;
+						mapping.height = videoCanvas.height;
+						mappingCtx = mapping.getContext("2d");
+						mappingCtx.fillStyle = "white";
+					}
 					for (let i = 0; i < nLights; i++) {
 						switch (videoMapping.value) {
 							case "unfolded": {
@@ -230,11 +239,15 @@
 								}
 								break;
 						}
-						ctx.fillRect(W, H, 1, 1);
+						if (mappingCtx) {
+							mappingCtx.fillRect(W, H, 1, 1);
+						}
 						let idx = H*videoCanvas.width*4+W*4;
 						_color.fromArray(data, idx);
 						_color.toArray(color, i * 3);
 					}
+					videoCanvas.height = videoCanvas.height;
+					ctx.drawImage(videoMappings[videoMapping.value], 0, 0, videoCanvas.width, videoCanvas.height);
 				},
 				randomWalk: function randomWalk(offset, timestamp) {
 					const _color = new THREE.Color();
