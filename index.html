@@ -108,10 +108,12 @@
 			</div>
 			<div data-tool="spread">
 				<dl>
-					<dt>drop frequency</dt>
+					<dt>Drop frequency</dt>
 					<dd><input type="range" id="spreadFrequency" value="1" min="0.1" max="3" step="0.1"></dd>
-					<dt>fade time</dt>
+					<dt>Fade time</dt>
 					<dd><input type="range" id="spreadFade" value="0.97" min="0" max="1" step="0.01"></dd>
+					<dt>Max steps</dt>
+					<dd><input type="range" id="spreadSteps" value="100" min="1" max="165" step="1"></dd>
 				</dl>
 			</div>
 		</div>
@@ -345,7 +347,7 @@
 				},
 				spread: function(offset, timestamp) {
 					color.forEach((v, idx)=>color[idx]=v*spreadFade.value);
-					spreads.forEach(({positions, visited, spreadColor}, index) => {
+					spreads.forEach(({positions, visited, spreadColor, steps}, index) => {
 						let newPositions = [];
 						positions.forEach(p => {
 							let connections = Array.from(p.meta.connections.entries());
@@ -357,15 +359,16 @@
 								}
 							});
 						});
-						spreads[index] = {positions: newPositions, visited, spreadColor};
+						spreads[index] = {positions: newPositions, visited, spreadColor, steps: steps+1};
 					});
-					spreads = spreads.filter(s => s.visited.size < lights.length);
+					spreads = spreads.filter(s => s.visited.size < lights.length && s.steps <= spreadSteps.value);
 					if (Math.random() < 1/60*spreadFrequency.value) {
 						let position = lights[Math.floor(Math.random()*lights.length)];
 						spreads.push({
 							positions: [position],
 							visited: new Set([position]),
-							spreadColor: new THREE.Color(`hsl(${360 * Math.random()}, 100%, 50%)`)
+							spreadColor: new THREE.Color(`hsl(${360 * Math.random()}, 100%, 50%)`),
+							steps: 1,
 						});
 					}
 				}
