@@ -126,6 +126,7 @@
 					<option value="randomWalk">Random walk</option>
 					<option value="snakeGame">Snake</option>
 					<option value="spread">Spread</option>
+					<option value="construction">Construction</option>
 				</select>
 			</dd>
 			<dt>Auto rotate</dt>
@@ -371,7 +372,22 @@
 							steps: 1,
 						});
 					}
-				}
+				},
+				construction: function(offset, timestamp) {
+					let colors = [
+						new THREE.Color(1,0,0),
+						new THREE.Color(0,1,0),
+						new THREE.Color(0,0,1)
+					];
+					let lengths = [];
+					lights.forEach(l => {
+						let {length, index} = l.meta;
+						if (lengths.indexOf(length) == -1) {
+							lengths.push(length);
+						}
+						colors[lengths.indexOf(length)].toArray(color, index * 3);
+					});
+				},
 			};
 
 			function initSnake() {
@@ -448,10 +464,15 @@
 				container.appendChild( renderer.domElement );
 
 				window.addEventListener( 'resize', onWindowResize, false );
+				let distances = {};
 
 				function createCylinder(vstart, vend, scene){
 					var HALF_PI = Math.PI * .5;
 					var distance = vstart.distanceTo(vend);
+					let fixedDistance = (distance / SCALE).toFixed(2);
+					if (!(fixedDistance in distances))
+						distances[fixedDistance] = 0;
+					distances[fixedDistance]++;
 					var position  = vend.clone().add(vstart).divideScalar(2);
 
 					var cylinder = new THREE.CylinderBufferGeometry(10*SCALE,10*SCALE,distance,16,16,false);
@@ -496,7 +517,8 @@
 						lightMesh.meta = {
 							x, y, z,
 							angleX, angleZ,
-							connections: new Map()
+							connections: new Map(),
+							length: fixedDistance
 						};
 						// create connections within each tube. The rest will be detected later
 						if (idx > 0) {
