@@ -48,10 +48,18 @@
 				margin: 0;
 				padding: .5em;
 			}
+			#power {
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				opacity: 0.5;
+				border-top: 1px white solid;
+			}
 		</style>
 	</head>
 	<body>
 		<div id="container"></div>
+		<canvas id="power"></canvas>
 		<div id="configuration">
 			<div data-tool="hueRotate">
 				<select id="hueRotation">
@@ -165,6 +173,7 @@
 		<script>
 			let particles = [], snake = {positions: [], direction: null, food: {positions: [], colors: []}, colors: []};
 			let spreads = [];
+			let powerData = [], powerHistory = 60*6;
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
 			let videoMappings = {};
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
@@ -752,7 +761,27 @@
 
 				render();
 			}
-
+			function getPowerUsage() {
+				// power in W per chanel at full
+				let ppc = [
+					9/30/3,
+					9/30/3,
+					9/30/3
+				];
+				let usages = color.map((v, idx) => (Number.isNaN(v) ? 0 : v) * ppc[idx%3]);
+				let total = usages.reduce((a,b)=>a+b, 0);
+				return total;
+			}
+			function drawPowerUsage() {
+				power.width = powerHistory;
+				let multiplier = power.height/1000;
+				let pCtx = power.getContext("2d");
+				pCtx.fillStyle = "white";
+				powerData.forEach((v, idx) => {
+					v *= multiplier;
+					pCtx.fillRect(idx, power.height - v, 1, v);
+				});
+			}
 			function animate(timestamp) {
 				requestAnimationFrame( animate );
 				let diff = timestamp - lastFrame;
@@ -760,6 +789,13 @@
 				controls.update();
 				let offset = diff/5000;
 				(vizualisations[selector.value])(offset, timestamp);
+				color.forEach((v, idx) => color[idx] = v > 1 ? 1 : v);
+				let currentPower = getPowerUsage();
+				while (powerData.length >= powerHistory) {
+					powerData.shift();
+				}
+				powerData.push(currentPower);
+				drawPowerUsage();
 				// do stuff
 				colorInstancedBufferAttribute.needsUpdate = true;
 				render();
