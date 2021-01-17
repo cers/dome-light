@@ -173,7 +173,7 @@
 		<script>
 			let particles = [], snake = {positions: [], direction: null, food: {positions: [], colors: []}, colors: []};
 			let spreads = [];
-			let powerData = [], powerHistory = 60*6;
+			let powerHistory = 60*6;
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
 			let videoMappings = {};
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
@@ -772,15 +772,15 @@
 				let total = usages.reduce((a,b)=>a+b, 0);
 				return total;
 			}
-			function drawPowerUsage() {
-				power.width = powerHistory;
+			function drawPowerUsage(currentPower) {
 				let multiplier = power.height/1000;
 				let pCtx = power.getContext("2d");
+				let imageData = pCtx.getImageData(1, 0, power.width - 1, power.height);
+				pCtx.clearRect(0, 0, power.width, power.height);
+				pCtx.putImageData(imageData, 0, 0);
 				pCtx.fillStyle = "white";
-				powerData.forEach((v, idx) => {
-					v *= multiplier;
-					pCtx.fillRect(idx, power.height - v, 1, v);
-				});
+				let v = currentPower * multiplier;
+				pCtx.fillRect(power.width - 1, power.height - v, 1, v);
 			}
 			function animate(timestamp) {
 				requestAnimationFrame( animate );
@@ -791,11 +791,7 @@
 				(vizualisations[selector.value])(offset, timestamp);
 				color.forEach((v, idx) => color[idx] = v > 1 ? 1 : v);
 				let currentPower = getPowerUsage();
-				while (powerData.length >= powerHistory) {
-					powerData.shift();
-				}
-				powerData.push(currentPower);
-				drawPowerUsage();
+				drawPowerUsage(currentPower);
 				// do stuff
 				colorInstancedBufferAttribute.needsUpdate = true;
 				render();
