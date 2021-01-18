@@ -121,7 +121,7 @@
 					<dt>Fade time</dt>
 					<dd><input type="range" id="spreadFade" value="0.97" min="0" max="1" step="0.01"></dd>
 					<dt>Max steps</dt>
-					<dd><input type="range" id="spreadSteps" value="100" min="1" max="165" step="1"></dd>
+					<dd><input type="range" id="spreadSteps" value="300" min="1" max="300" step="1"></dd>
 				</dl>
 			</div>
 		</div>
@@ -181,7 +181,7 @@
 			let cylinders = [];
 			let lights = [];
 			let SCALE = 1/1000;
-			let LEDDistance = 60 * SCALE;
+			let LEDDistance = 33 * SCALE;
 			let tubeMaterial = new THREE.MeshPhongMaterial({
 				transparent: true,
 				opacity: 0.8,
@@ -424,7 +424,7 @@
 				}
 			}
 
-			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, 60 * SCALE );
+			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, LEDDistance );
 			geometry.computeVertexNormals();
 			const material = new THREE.MeshBasicMaterial({color: 0xffffff});
 
@@ -776,7 +776,7 @@
 				return total;
 			}
 			function drawPowerUsage(currentPower) {
-				let multiplier = power.height/1000;
+				let multiplier = power.height/2000;
 				let pCtx = power.getContext("2d");
 				let imageData = pCtx.getImageData(1, 0, power.width - 1, power.height);
 				pCtx.clearRect(0, 0, power.width, power.height);
