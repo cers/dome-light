@@ -124,6 +124,11 @@
 					<dd><input type="range" id="spreadSteps" value="300" min="1" max="300" step="1"></dd>
 				</dl>
 			</div>
+			<div data-tool="audio">
+				<input id="audioPicker" type="file" accept="audio/*"/>
+				<audio id="audioPlayer" controls autoplay loop></audio>
+				<canvas id="audioCanvas"></canvas>
+			</div>
 		</div>
 		<dl id="effects">
 			<dt>Program</dt>
@@ -134,6 +139,7 @@
 					<option value="randomWalk">Random walk</option>
 					<option value="snakeGame">Snake</option>
 					<option value="spread">Spread</option>
+					<option value="audio">Audio</option>
 					<option value="construction">Construction</option>
 				</select>
 			</dd>
@@ -144,6 +150,12 @@
 		<script src="BufferGeometryUtils.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script>
+			let audioContext = new AudioContext();
+			let audioSource = audioContext.createMediaElementSource(audioPlayer);
+			let audioAnalyser = audioContext.createAnalyser();
+			audioAnalyser.fftSize = 256;
+			audioSource.connect(audioAnalyser);
+			audioSource.connect(audioContext.destination);
 			function resizeVideoCanvas() {
 				videoCanvas.width = Math.floor(videoPlayer.clientWidth);
 				videoCanvas.height = Math.floor(videoPlayer.clientHeight);
@@ -169,11 +181,29 @@
 					setVideoFile();
 				}
 			})();
+			(function localFileAudioPlayer() {
+				'use strict'
+				let URL = window.URL || window.webkitURL
+				let playSelectedFile = function (event) {
+					let file = this.files[0]
+					let type = file.type
+					let fileURL = URL.createObjectURL(file)
+					audioPlayer.src = fileURL;
+				}
+				audioPicker.addEventListener('change', playSelectedFile, false);
+				// videoSelector.addEventListener('change', setVideoFile, false);
+				if (audioPicker.value) {
+					playSelectedFile.call(audioPicker);
+					audioPlayer.play();
+				}
+			})();
 		</script>
 		<script>
 			let particles = [], snake = {positions: [], direction: null, food: {positions: [], colors: []}, colors: []};
 			let spreads = [];
 			let powerHistory = 60*6;
+			let powerData = Array(powerHistory).fill(0);
+			let powerDataIndex = 0;
 			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
 			let videoMappings = {};
 			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
@@ -193,6 +223,7 @@
 			function updateTools() {
 				configuration.querySelector(".active")?.classList.remove("active");
 				configuration.querySelector(`[data-tool=${selector.value}]`)?.classList.add("active");
+				videoMappings = {};
 			};
 			updateTools();
 			selector.addEventListener("change", updateTools, false);
@@ -212,6 +243,42 @@
 				}
 			}
 			nWalkers.addEventListener("input", updateParticles, false);
+			function mapCanvasToDome(ctx, map) {
+				let frame = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+				let data = Array.from(frame.data).map(v => v/256);
+				const _color = new THREE.Color();
+				let H, W;
+				let mappingCtx = null;
+				if (!videoMappings[map]) {
+					let mapping = videoMappings[map] = document.createElement("canvas");
+					mapping.width = ctx.canvas.width;
+					mapping.height = ctx.canvas.height;
+					mappingCtx = mapping.getContext("2d");
+					mappingCtx.fillStyle = "white";
+				}
+				for (let i = 0; i < nLights; i++) {
+					switch (map) {
+						case "unfolded": {
+								let {angleX, angleZ} = lights[i].meta;
+								H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*ctx.canvas.height);
+								W = Math.floor(ctx.canvas.width - (Math.PI+angleX)/(2*Math.PI)*ctx.canvas.width);
+							}
+							break;
+						case "squished": {
+								let {x, y, z, angleX, angleZ} = lights[i].meta;
+								H = Math.floor(ctx.canvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
+								W = Math.floor(ctx.canvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
+							}
+							break;
+					}
+					if (mappingCtx) {
+						mappingCtx.fillRect(W, H, 1, 1);
+					}
+					let idx = H*ctx.canvas.width*4+W*4;
+					_color.fromArray(data, idx);
+					_color.toArray(color, i * 3);
+				}
+			}
 			const vizualisations = {
 				hueRotate: function hueByAngle(offset, timestamp) {
 					const _color = new THREE.Color();
@@ -237,40 +304,7 @@
 					}
 					let ctx = videoCanvas.getContext("2d");
 					ctx.drawImage(videoPlayer, 0, 0, videoCanvas.width, videoCanvas.height);
-					let frame = ctx.getImageData(0, 0, videoCanvas.width, videoCanvas.height);
-					let data = Array.from(frame.data).map(v => v/256);
-					const _color = new THREE.Color();
-					let H, W;
-					let mappingCtx = null;
-					if (!videoMappings[videoMapping.value]) {
-						let mapping = videoMappings[videoMapping.value] = document.createElement("canvas");
-						mapping.width = videoCanvas.width;
-						mapping.height = videoCanvas.height;
-						mappingCtx = mapping.getContext("2d");
-						mappingCtx.fillStyle = "white";
-					}
-					for (let i = 0; i < nLights; i++) {
-						switch (videoMapping.value) {
-							case "unfolded": {
-									let {angleX, angleZ} = lights[i].meta;
-									H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*videoCanvas.height);
-									W = Math.floor(videoCanvas.width - (Math.PI+angleX)/(2*Math.PI)*videoCanvas.width);
-								}
-								break;
-							case "squished": {
-									let {x, y, z, angleX, angleZ} = lights[i].meta;
-									H = Math.floor(videoCanvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
-									W = Math.floor(videoCanvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * videoCanvas.height/2);
-								}
-								break;
-						}
-						if (mappingCtx) {
-							mappingCtx.fillRect(W, H, 1, 1);
-						}
-						let idx = H*videoCanvas.width*4+W*4;
-						_color.fromArray(data, idx);
-						_color.toArray(color, i * 3);
-					}
+					mapCanvasToDome(ctx, videoMapping.value);
 					videoCanvas.height = videoCanvas.height;
 					ctx.drawImage(videoMappings[videoMapping.value], 0, 0, videoCanvas.width, videoCanvas.height);
 				},
@@ -400,6 +434,31 @@
 						colors[lengths.indexOf(length)].toArray(color, index * 3);
 					});
 				},
+				audio: function(offset, timestamp) {
+					let bufferLength = audioAnalyser.frequencyBinCount;
+					let dataArray = new Uint8Array(bufferLength);
+					audioAnalyser.getByteFrequencyData(dataArray);
+					let audioCtx = audioCanvas.getContext("2d");
+					// audioCanvas.width *= 1;
+					let gradient = audioCtx.createLinearGradient(0, audioCtx.canvas.height, 0, 0);
+					for (let i=0; i <= 8; i++) {
+						gradient.addColorStop(i/8, `hsl(${i/8*120}, 100%, 50%)`);
+					}
+					audioCtx.fillStyle = gradient;
+					audioCtx.fillRect(0, 0, audioCtx.canvas.width, audioCtx.canvas.height);
+					let barWidth = Math.floor((audioCanvas.width / bufferLength) * 3 / 2);
+					let barHeight;
+					let x = 0;
+					for(let i = 0; i < bufferLength; i++) {
+						barHeight = dataArray[i]/2;
+						audioCtx.clearRect(x,0,barWidth,audioCanvas.height-barHeight);
+						audioCtx.clearRect(audioCanvas.width - x,0,-barWidth,audioCanvas.height-barHeight);
+						x += barWidth;
+						if (x >= audioCtx.canvas.width / 2)
+							break;
+					}
+					mapCanvasToDome(audioCtx, "unfolded");
+				}
 			};
 
 			function initSnake() {
@@ -771,19 +830,24 @@
 					9/30/3,
 					9/30/3
 				];
-				let usages = color.map((v, idx) => (Number.isNaN(v) ? 0 : v) * ppc[idx%3]);
-				let total = usages.reduce((a,b)=>a+b, 0);
+				let total = 0;
+				for (idx = 0; idx < color.length; idx++)
+					total += (color[idx] || 0) * ppc[idx%3];
 				return total;
 			}
-			function drawPowerUsage(currentPower) {
+			function drawPowerUsage() {
 				let multiplier = power.height/2000;
+				power.width = powerHistory;
 				let pCtx = power.getContext("2d");
-				let imageData = pCtx.getImageData(1, 0, power.width - 1, power.height);
-				pCtx.clearRect(0, 0, power.width, power.height);
-				pCtx.putImageData(imageData, 0, 0);
 				pCtx.fillStyle = "white";
-				let v = currentPower * multiplier;
-				pCtx.fillRect(power.width - 1, power.height - v, 1, v);
+				pCtx.beginPath();
+				pCtx.moveTo(0, power.height);
+				let idx = 0;
+				for (; idx < powerHistory; idx++) {
+					pCtx.lineTo(idx, power.height - powerData[(powerDataIndex + idx) % powerHistory] * multiplier)
+				}
+				pCtx.lineTo(idx, power.height);
+				pCtx.fill();
 			}
 			function animate(timestamp) {
 				requestAnimationFrame( animate );
@@ -793,8 +857,8 @@
 				let offset = diff/5000;
 				(vizualisations[selector.value])(offset, timestamp);
 				color.forEach((v, idx) => color[idx] = v > 1 ? 1 : v);
-				let currentPower = getPowerUsage();
-				drawPowerUsage(currentPower);
+				powerData[(powerDataIndex++)%powerHistory] = getPowerUsage();
+				drawPowerUsage();
 				// do stuff
 				colorInstancedBufferAttribute.needsUpdate = true;
 				render();
