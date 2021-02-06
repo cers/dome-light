@@ -807,7 +807,7 @@
 				});
 
 				// find LEDs with only one connection (must be an end)
-				// then find all other end LEDs that are close to it, anc connect them
+				// then find all other end LEDs that are close to it, and connect them
 				let endLEDs = lights.filter(l => l.meta.connections.size == 1);
 				for (let idx = 0; idx < endLEDs.length; idx++) {
 					let currentLED = endLEDs[idx];
@@ -818,8 +818,6 @@
 				updateParticles();
 
 				scene.add( lightInstances );
-
-				// render();
 			}
 
 			function onWindowResize() {
@@ -865,6 +863,8 @@
 				controls.update();
 				let offset = diff/5000;
 				(vizualisations[selector.value])(offset, timestamp);
+				// clamp the color array to [0-1]. Some THREE.Color functions do not enforce this,
+				// but some of our logic requires it
 				color.forEach((v, idx) => color[idx] = v > 1 ? 1 : v);
 				powerData[(powerDataIndex++)%powerHistory] = getPowerUsage();
 				drawPowerUsage();
