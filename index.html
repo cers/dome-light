@@ -55,7 +55,14 @@
 				opacity: 0.5;
 				border-top: 1px white solid;
 			}
+			pre {
+				margin: 0;
+			}
+			code {
+				resize: both;
+			}
 		</style>
+		<link rel="stylesheet" href="monokai-sublime.css" />
 	</head>
 	<body>
 		<div id="container"></div>
@@ -133,6 +140,10 @@
 					<dd><input type="checkbox" id="audioFrequencyShift"></dd>
 				</dl>
 			</div>
+			<div data-tool="custom">
+				<pre><code id="customCode" class="js" contenteditable="true" spellcheck="false"></code></pre>
+				<button id="shareCode">Create link</button>
+			</div>
 		</div>
 		<dl id="effects">
 			<dt>Program</dt>
@@ -145,11 +156,13 @@
 					<option value="spread">Spread</option>
 					<option value="audio">Audio</option>
 					<option value="construction">Construction</option>
+					<option value="custom">Custom code</option>
 				</select>
 			</dd>
 			<dt>Auto rotate</dt>
 			<dd><input type="checkbox" id="autoRotate"></dd>
 		</dl>
+		<script src="highlight.pack.js"></script>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
 		<script src="OrbitControls.js"></script>
@@ -467,6 +480,9 @@
 							break;
 					}
 					mapCanvasToDome(audioCtx, "unfolded");
+				},
+				custom: function(offset, timestamp) {
+					eval(customCode.innerText);
 				}
 			};
 
@@ -877,6 +893,18 @@
 			function render() {
 				renderer.render( scene, camera );
 			}
+		</script>
+		<script>
+			hljs.initHighlightingOnLoad();
+			let searchParams = new URLSearchParams(window.location.search);
+			if (searchParams.has("code")) {
+				customCode.innerHTML = searchParams.get("code");
+				selector.value = "custom";
+				updateTools();
+			}
+			shareCode.addEventListener("click", function() {
+				window.location.search = `code=${encodeURIComponent(customCode.innerText)}`;
+			})
 		</script>
 	</body>
 </html>
