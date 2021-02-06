@@ -154,6 +154,11 @@
 		<script src="BufferGeometryUtils.js"></script>
 		<script src="OrbitControls.js"></script>
 		<script>
+			function pickRandom(arr) {
+				return arr[Math.floor(Math.random()*arr.length)];
+			}
+		</script>
+		<script>
 			let audioContext = new AudioContext();
 			let audioSource = audioContext.createMediaElementSource(audioPlayer);
 			let audioAnalyser = audioContext.createAnalyser();
@@ -235,7 +240,7 @@
 			function updateParticles() {
 				if (nWalkers.value > particles.length) {
 					for (let idx = particles.length; idx < nWalkers.value; idx++) {
-						let light = lights[Math.floor(Math.random()*lights.length)];
+						let light = pickRandom(lights);
 						particles.push({
 							position: light,
 							direction: light.meta.connections.entries().next().value[0],
@@ -327,7 +332,7 @@
 						let nextLight = particle.position.meta.connections.get(particle.direction);
 						if (!nextLight.meta.connections.get(particle.direction)) {
 							let possible = Array.from(nextLight.meta.connections.entries()).filter(([dir, light]) => light.uuid != particle.position.uuid);
-							[particle.direction, _] = possible[Math.floor(Math.random() * possible.length)];
+							[particle.direction, _] = pickRandom(possible);
 						}
 						particle.position = nextLight;
 					});
@@ -343,7 +348,7 @@
 					}
 					while (snake.food.positions.length < nSnakeFood.value) {
 						let possibleFoodPositions = lights.filter(l => !(l.uuid in snake.positions.map(p => p.uuid)) && !(l.uuid in snake.food.positions.map(p => p.uuid)));
-						snake.food.positions.push(lights[Math.floor(Math.random() * lights.length)]);
+						snake.food.positions.push(pickRandom(lights));
 						let newColor = new THREE.Color();
 						newColor.setHSL(Math.random(), 1, 0.5);
 						snake.food.colors.push(newColor)
@@ -379,7 +384,7 @@
 					}
 					if (!nextPosition.meta.connections.get(snake.direction)) {
 						let possible = Array.from(nextPosition.meta.connections.entries()).filter(([dir, light]) => light.uuid != snakeHead.uuid);
-						[snake.direction, _] = possible[Math.floor(Math.random() * possible.length)];
+						[snake.direction, _] = pickRandom(possible);
 					}
 					snake.positions.unshift(nextPosition);
 					let foodCollision = snake.food.positions.indexOf(nextPosition);
@@ -414,7 +419,7 @@
 					});
 					spreads = spreads.filter(s => s.visited.size < lights.length && s.steps <= spreadSteps.value);
 					if (Math.random() < 1/60*spreadFrequency.value) {
-						let position = lights[Math.floor(Math.random()*lights.length)];
+						let position = pickRandom(lights);
 						spreads.push({
 							positions: [position],
 							visited: new Set([position]),
@@ -467,7 +472,7 @@
 
 			function initSnake() {
 				let startingLength = 5;
-				let start = lights[Math.floor(Math.random() * lights.length)];
+				let start = pickRandom(lights);
 				snake.positions = [start];
 				let newColor = new THREE.Color();
 				newColor.setHSL(Math.random(), 1, 0.5);
@@ -478,7 +483,7 @@
 					let nextLight = prevLight.meta.connections.get(tailDirection);
 					if (!nextLight) {
 						let possibleDirections = Array.from(prevLight.meta.connections.entries()).filter(([dir, light])=>light.uuid != prevLight.uuid);
-						[tailDirection, nextLight] = possibleDirections[Math.floor(Math.random() * possibleDirections.length)];
+						[tailDirection, nextLight] = pickRandom(possibleDirections);
 					}
 					snake.positions.push(nextLight);
 					let newColor = new THREE.Color();
