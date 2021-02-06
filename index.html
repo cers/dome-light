@@ -127,7 +127,7 @@
 			<div data-tool="audio">
 				<input id="audioPicker" type="file" accept="audio/*"/>
 				<audio id="audioPlayer" controls autoplay loop></audio>
-				<canvas id="audioCanvas"></canvas>
+				<canvas id="audioCanvas" height="128"></canvas>
 				<dl>
 					<dt>Shift hue over time</dt>
 					<dd><input type="checkbox" id="audioFrequencyShift"></dd>
@@ -443,7 +443,6 @@
 					let dataArray = new Uint8Array(bufferLength);
 					audioAnalyser.getByteFrequencyData(dataArray);
 					let audioCtx = audioCanvas.getContext("2d");
-					// audioCanvas.width *= 1;
 					let gradient = audioCtx.createLinearGradient(0, audioCtx.canvas.height, 0, 0);
 					let shift = audioFrequencyShift.checked ? timestamp/800 : 0;
 					for (let i=0; i <= 8; i++) {
@@ -454,7 +453,7 @@
 					let barWidth = Math.floor((audioCanvas.width / bufferLength) * 3 / 2);
 					let barHeight;
 					let x = 0;
-					for(let i = 0; i < bufferLength; i++) {
+					for (let i = 0; i < bufferLength; i++) {
 						barHeight = dataArray[i]/2;
 						audioCtx.clearRect(x,0,barWidth,audioCanvas.height-barHeight);
 						audioCtx.clearRect(audioCanvas.width - x,0,-barWidth,audioCanvas.height-barHeight);
