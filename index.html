@@ -55,14 +55,12 @@
 				opacity: 0.5;
 				border-top: 1px white solid;
 			}
-			pre {
-				margin: 0;
-			}
-			code {
+			#customCode {
+				min-width: 300px;
+				min-height: 200px;
 				resize: both;
 			}
 		</style>
-		<link rel="stylesheet" href="monokai-sublime.css" />
 	</head>
 	<body>
 		<div id="container"></div>
@@ -141,7 +139,7 @@
 				</dl>
 			</div>
 			<div data-tool="custom">
-				<pre><code id="customCode" class="js" contenteditable="true" spellcheck="false"></code></pre>
+				<div id="customCode"></div>
 				<button id="shareCode">Create link</button>
 			</div>
 		</div>
@@ -162,7 +160,9 @@
 			<dt>Auto rotate</dt>
 			<dd><input type="checkbox" id="autoRotate"></dd>
 		</dl>
-		<script src="highlight.pack.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.min.js" integrity="sha512-GoORoNnxst42zE3rYPj4bNBm0Q6ZRXKNH2D9nEmNvVF/z24ywVnijAWVi/09iBiVDQVf3UlZHpzhAJIdd9BXqw==" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.js" integrity="sha512-S4i/WUGRs22+8rjUVu4kBjfNuBNp8GVsgcK2lbaFdws4q6TF3Nd00LxqnHhuxS9iVDfNcUh0h6OxFUMP5DBD+g==" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-javascript.min.js" integrity="sha512-ZxMbXDxB0Whct+zt+DeW/RZaBv33N5D7myNFtBGiqpDSFRLxn2CNp6An0A1zUAJU/+bl8CMVrwxwnFcpFi3yTQ==" crossorigin="anonymous"></script>
 		<script src="three.min.js"></script>
 		<script src="BufferGeometryUtils.js"></script>
 		<script src="OrbitControls.js"></script>
@@ -482,7 +482,7 @@
 					mapCanvasToDome(audioCtx, "unfolded");
 				},
 				custom: function(offset, timestamp) {
-					eval(customCode.innerText);
+					eval(customCode.editor.getValue());
 				}
 			};
 
@@ -895,15 +895,22 @@
 			}
 		</script>
 		<script>
-			hljs.initHighlightingOnLoad();
+			let editor = ace.edit("customCode");
+			customCode.editor = editor;
+			const resizeObserver = new ResizeObserver(entries => {
+				editor.resize()
+			});
+			resizeObserver.observe(customCode);
+		    editor.setTheme("ace/theme/monokai");
+		    editor.session.setMode("ace/mode/javascript");
 			let searchParams = new URLSearchParams(window.location.search);
 			if (searchParams.has("code")) {
-				customCode.innerHTML = searchParams.get("code");
+				editor.setValue(searchParams.get("code"));
 				selector.value = "custom";
 				updateTools();
 			}
 			shareCode.addEventListener("click", function() {
-				window.location.search = `code=${encodeURIComponent(customCode.innerText)}`;
+				window.location.search = `code=${encodeURIComponent(editor.getValue())}`;
 			})
 		</script>
 	</body>
