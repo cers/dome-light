@@ -139,7 +139,14 @@
 				</dl>
 			</div>
 			<div data-tool="custom">
-				<div id="customCode"></div>
+				<div id="customCode">// contents here is run each frame, and has access
+// to a number of usefull variables:
+// offset is the time since last frame was painted
+// timestamp is the time since the page was loaded
+// color is a Float32Array containing r, g, b values
+// for all the LEDs. 0 is off, 1 is full
+// lights is an array of LEDs. Each has a meta object,
+// which contains a lot of relevant information</div>
 				<button id="shareCode">Create link</button>
 			</div>
 		</div>
@@ -213,7 +220,6 @@
 					audioPlayer.src = fileURL;
 				}
 				audioPicker.addEventListener('change', playSelectedFile, false);
-				// videoSelector.addEventListener('change', setVideoFile, false);
 				if (audioPicker.value) {
 					playSelectedFile.call(audioPicker);
 					audioPlayer.play();
@@ -301,7 +307,7 @@
 					_color.toArray(color, i * 3);
 				}
 			}
-			const vizualisations = {
+			const visualizations = {
 				hueRotate: function hueByAngle(offset, timestamp) {
 					const _color = new THREE.Color();
 					for (let i = 0; i < nLights; i++) {
@@ -879,7 +885,7 @@
 				lastFrame = timestamp;
 				controls.update();
 				let offset = diff/5000;
-				(vizualisations[selector.value])(offset, timestamp);
+				(visualizations[selector.value])(offset, timestamp);
 				// clamp the color array to [0-1]. Some THREE.Color functions do not enforce this,
 				// but some of our logic requires it
 				color.forEach((v, idx) => color[idx] = v > 1 ? 1 : v);
