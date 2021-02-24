@@ -146,7 +146,14 @@
 // color is a Float32Array containing r, g, b values
 // for all the LEDs. 0 is off, 1 is full
 // lights is an array of LEDs. Each has a meta object,
-// which contains a lot of relevant information</div>
+// which contains a lot of relevant information
+const _color = new THREE.Color();
+for (let i = 0; i < nLights; i++) {
+	let {x, y, z, angleX, angleZ, index} = lights[i].meta;
+	let height = (minZ + z)/(maxZ-minZ);
+	_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
+	_color.toArray(color, index * 3);
+}</div>
 				<button id="shareCode">Create link</button>
 			</div>
 		</div>
