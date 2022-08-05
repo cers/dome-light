@@ -5,17 +5,248 @@
 		<title></title>
 		<style>
 			html, body 	{margin: 0; padding: 0; overflow: hidden;}
+			#effects {
+				position: absolute;
+				top: 5px;
+				right: 5px;
+				background: rgba(255, 255, 255, 0.5);
+			}
+			#configuration {
+				position: absolute;
+				top: 5px;
+				left: 5px;
+				width: 20vw;
+			}
+			#videocontainer {
+				position: relative;
+			}
+			#videocontainer video {
+				width: 100%;
+			}
+			#videoCanvas {
+				position: absolute;
+				left: 0;
+				top: 0;
+				pointer-events: none;
+			}
+			#videoSelector {
+				position: absolute;
+				top: 0;
+				right: 0;
+			}
+			#configuration > * {
+				display: none;
+			}
+			#configuration .active {
+				display: block;
+				position: absolute;
+				top: 0;
+				left: 0;
+				background: rgba(255, 255, 255, 0.5);
+			}
+			dl {
+				margin: 0;
+				padding: .5em;
+			}
+			#power {
+				position: absolute;
+				bottom: 0;
+				left: 0;
+				opacity: 0.5;
+				border-top: 1px white solid;
+			}
+			#customCode {
+				min-width: 300px;
+				min-height: 200px;
+				resize: both;
+			}
 		</style>
 	</head>
 	<body>
 		<div id="container"></div>
+		<canvas id="power"></canvas>
+		<div id="configuration">
+			<div data-tool="hueRotate">
+				<select id="hueRotation">
+					<option value="height">Height</option>
+					<option value="angleX">Angle from X</option>
+					<option value="angleZ">Angle from Z</option>
+				</select>
+			</div>
+			<div data-tool="video">
+				<input id="videoPicker" type="file" accept="video/*"/>
+				<select id="videoSelector">
+					<option value="">None</option>
+					<option value="fire.webm">Fire</option>
+					<option value="mood_lights.webm">Mood lights</option>
+					<option value="trippy_visuals.webm">Trippy visuals</option>
+				</select>
+				<div id="videocontainer">
+					<video id="videoPlayer" controls autoplay loop></video>
+					<canvas id="videoCanvas"></canvas>
+					<select id="videoMapping">
+						<option value="unfolded">Unfolded</option>
+						<option value="squished">Squished</option>
+					</select>
+				</div>
+			</div>
+			<div data-tool="randomWalk">
+				<dl>
+					<dt>Amount</dt>
+					<dd><input type="range" id="nWalkers" min="1" max="100" value="1"/></dd>
+					<dt>Halflife</dt>
+					<dd><input type="range" id="walkerHalflife" min="0" max="1" value="0.98" step="0.01"/></dd>
+					<dt>Monochrome</dt>
+					<dd>
+						<input type="checkbox" id="walkerMonochrome">
+						<input type="color" id="walkerColor" value="#ffffff">
+					</dd>
+				</dl>
+			</div>
+			<div data-tool="snakeGame">
+				<dl>
+					<dt>Amount of food</dt>
+					<dd><input type="range" id="nSnakeFood" min="1" max="100" value="1"/></dd>
+					<dt>Snake Color</dt>
+					<dd><input type="color" id="snakeColor" value="#ffffff"></dd>
+					<dt>Food Color</dt>
+					<dd><input type="color" id="snakeFoodColor" value="#ffffff"></dd>
+					<dt>Follow snake with camera</dt>
+					<dd><input type="checkbox" id="snakeFollow"></dd>
+					<dt>Preserve colors</dt>
+					<dd><input type="checkbox" id="snakePreserveColor"></dd>
+					<dt>Preserve order</dt>
+					<dd><input type="checkbox" id="snakePreserveOrder"></dd>
+				</dl>
+			</div>
+			<div data-tool="spread">
+				<dl>
+					<dt>Drop frequency</dt>
+					<dd><input type="range" id="spreadFrequency" value="1" min="0.1" max="3" step="0.1"></dd>
+					<dt>Fade time</dt>
+					<dd><input type="range" id="spreadFade" value="0.97" min="0" max="1" step="0.01"></dd>
+					<dt>Max steps</dt>
+					<dd><input type="range" id="spreadSteps" value="300" min="1" max="300" step="1"></dd>
+				</dl>
+			</div>
+			<div data-tool="audio">
+				<input id="audioPicker" type="file" accept="audio/*"/>
+				<audio id="audioPlayer" controls autoplay loop></audio>
+				<canvas id="audioCanvas" height="128"></canvas>
+				<dl>
+					<dt>Shift hue over time</dt>
+					<dd><input type="checkbox" id="audioFrequencyShift"></dd>
+				</dl>
+			</div>
+			<div data-tool="custom">
+				<div id="customCode">// contents here is run each frame, and has access
+// to a number of usefull variables:
+// offset is the time since last frame was painted
+// timestamp is the time since the page was loaded
+// color is a Float32Array containing r, g, b values
+// for all the LEDs. 0 is off, 1 is full
+// lights is an array of LEDs. Each has a meta object,
+// which contains a lot of relevant information
+const _color = new THREE.Color();
+for (let i = 0; i < nLights; i++) {
+	let {x, y, z, angleX, angleZ, index} = lights[i].meta;
+	let height = (minZ + z)/(maxZ-minZ);
+	_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
+	_color.toArray(color, index * 3);
+}</div>
+				<button id="shareCode">Create link</button>
+			</div>
+		</div>
+		<dl id="effects">
+			<dt>Program</dt>
+			<dd>
+				<select id="selector">
+					<option value="hueRotate">Hue rotation</option>
+					<option value="video">Video</option>
+					<option value="randomWalk">Random walk</option>
+					<option value="snakeGame">Snake</option>
+					<option value="spread">Spread</option>
+					<option value="audio">Audio</option>
+					<option value="construction">Construction</option>
+					<option value="custom">Custom code</option>
+				</select>
+			</dd>
+			<dt>Auto rotate</dt>
+			<dd><input type="checkbox" id="autoRotate"></dd>
+		</dl>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.min.js" integrity="sha512-GoORoNnxst42zE3rYPj4bNBm0Q6ZRXKNH2D9nEmNvVF/z24ywVnijAWVi/09iBiVDQVf3UlZHpzhAJIdd9BXqw==" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/theme-monokai.min.js" integrity="sha512-S4i/WUGRs22+8rjUVu4kBjfNuBNp8GVsgcK2lbaFdws4q6TF3Nd00LxqnHhuxS9iVDfNcUh0h6OxFUMP5DBD+g==" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/mode-javascript.min.js" integrity="sha512-ZxMbXDxB0Whct+zt+DeW/RZaBv33N5D7myNFtBGiqpDSFRLxn2CNp6An0A1zUAJU/+bl8CMVrwxwnFcpFi3yTQ==" crossorigin="anonymous"></script>
 		<script src="three.min.js"></script>
-		<script src="TrackballControls.js"></script>
+		<script src="BufferGeometryUtils.js"></script>
+		<script src="OrbitControls.js"></script>
 		<script>
-			var container, stats;
-			var camera, controls, scene, renderer;
+			function pickRandom(arr) {
+				return arr[Math.floor(Math.random()*arr.length)];
+			}
+		</script>
+		<script>
+			let audioContext = new AudioContext();
+			let audioSource = audioContext.createMediaElementSource(audioPlayer);
+			let audioAnalyser = audioContext.createAnalyser();
+			audioAnalyser.fftSize = 256;
+			audioSource.connect(audioAnalyser);
+			audioSource.connect(audioContext.destination);
+			function resizeVideoCanvas() {
+				videoCanvas.width = Math.floor(videoPlayer.clientWidth);
+				videoCanvas.height = Math.floor(videoPlayer.clientHeight);
+				videoMappings = {};
+			}
+			function setVideoFile() {
+				videoPlayer.src = `${window.location.href.split("?")[0]}/videos/${videoSelector.value}`;
+			}
+			(function localFileVideoPlayer() {
+				'use strict'
+				let URL = window.URL || window.webkitURL
+				let playSelectedFile = function (event) {
+					let file = this.files[0]
+					let type = file.type
+					let fileURL = URL.createObjectURL(file)
+					videoPlayer.src = fileURL;
+				}
+				videoPlayer.addEventListener('loadedmetadata', _=>setTimeout(resizeVideoCanvas, 0), false);
+				videoPicker.addEventListener('change', playSelectedFile, false);
+				videoSelector.addEventListener('change', setVideoFile, false);
+				resizeVideoCanvas();
+				if (videoSelector.value) {
+					setVideoFile();
+				}
+			})();
+			(function localFileAudioPlayer() {
+				'use strict'
+				let URL = window.URL || window.webkitURL
+				let playSelectedFile = function (event) {
+					let file = this.files[0]
+					let type = file.type
+					let fileURL = URL.createObjectURL(file)
+					audioPlayer.src = fileURL;
+				}
+				audioPicker.addEventListener('change', playSelectedFile, false);
+				if (audioPicker.value) {
+					playSelectedFile.call(audioPicker);
+					audioPlayer.play();
+				}
+			})();
+		</script>
+		<script>
+			let particles = [], snake = {positions: [], direction: null, food: {positions: [], colors: []}, colors: []};
+			let spreads = [];
+			let powerHistory = 60*6;
+			let powerData = Array(powerHistory).fill(0);
+			let powerDataIndex = 0;
+			var camera, controls, scene, renderer, nLights, color, colorInstancedBufferAttribute;
+			let videoMappings = {};
+			let minX = minY = minZ = minAngleZ = maxX = maxY = maxZ = maxAngleZ = 0;
 			let lastFrame = 0;
-
+			let cylinders = [];
+			let lights = [];
+			let SCALE = 1/1000;
+			let LEDDistance = 33 * SCALE;
 			let tubeMaterial = new THREE.MeshPhongMaterial({
 				transparent: true,
 				opacity: 0.8,
@@ -23,18 +254,295 @@
 				color: 0xffffff,
 				side: THREE.BackSide,
 			});
-			let LEDs = [];
+
+			function updateTools() {
+				configuration.querySelector(".active")?.classList.remove("active");
+				configuration.querySelector(`[data-tool=${selector.value}]`)?.classList.add("active");
+				videoMappings = {};
+			};
+			updateTools();
+			selector.addEventListener("change", updateTools, false);
+			autoRotate.addEventListener("change", setAutoRotate, false);
+			function updateParticles() {
+				if (nWalkers.value > particles.length) {
+					for (let idx = particles.length; idx < nWalkers.value; idx++) {
+						let light = pickRandom(lights);
+						particles.push({
+							position: light,
+							direction: light.meta.connections.entries().next().value[0],
+							color: new THREE.Color().setHSL(Math.random(), 1, 0.5)
+						});
+					}
+				} else {
+					particles.length = nWalkers.value;
+				}
+			}
+			nWalkers.addEventListener("input", updateParticles, false);
+			function mapCanvasToDome(ctx, map) {
+				let frame = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+				let data = Array.from(frame.data).map(v => v/256);
+				const _color = new THREE.Color();
+				let H, W;
+				let mappingCtx = null;
+				if (!videoMappings[map]) {
+					let mapping = videoMappings[map] = document.createElement("canvas");
+					mapping.width = ctx.canvas.width;
+					mapping.height = ctx.canvas.height;
+					mappingCtx = mapping.getContext("2d");
+					mappingCtx.fillStyle = "white";
+				}
+				for (let i = 0; i < nLights; i++) {
+					switch (map) {
+						case "unfolded": {
+								let {angleX, angleZ} = lights[i].meta;
+								H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*ctx.canvas.height);
+								W = Math.floor(ctx.canvas.width - (Math.PI+angleX)/(2*Math.PI)*ctx.canvas.width);
+							}
+							break;
+						case "squished": {
+								let {x, y, z, angleX, angleZ} = lights[i].meta;
+								H = Math.floor(ctx.canvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
+								W = Math.floor(ctx.canvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
+							}
+							break;
+					}
+					if (mappingCtx) {
+						mappingCtx.fillRect(W, H, 1, 1);
+					}
+					let idx = H*ctx.canvas.width*4+W*4;
+					_color.fromArray(data, idx);
+					_color.toArray(color, i * 3);
+				}
+			}
+			const visualizations = {
+				hueRotate: function hueByAngle(offset, timestamp) {
+					const _color = new THREE.Color();
+					for (let i = 0; i < nLights; i++) {
+						let {x, y, z, angleX, angleZ} = lights[i].meta;
+						switch (hueRotation.value) {
+							case "angleX":
+								_color.setHSL((angleX/(2*Math.PI) + timestamp/5000) % 1, 1, 0.5);
+								break;
+							case "angleZ":
+								_color.setHSL((angleZ/(2*Math.PI) + timestamp/5000) % 1, 1, 0.5);
+								break;
+							case "height":
+								let height = (minZ + z)/(maxZ-minZ);
+								_color.setHSL((height + timestamp/5000) % 1, 1, 0.5);
+						}
+						_color.toArray(color, i * 3);
+					}
+				},
+				video: function video(offset, timestamp) {
+					if (videoCanvas.width < 1 || videoCanvas.height < 1) {
+						return;
+					}
+					let ctx = videoCanvas.getContext("2d");
+					ctx.drawImage(videoPlayer, 0, 0, videoCanvas.width, videoCanvas.height);
+					mapCanvasToDome(ctx, videoMapping.value);
+					videoCanvas.height = videoCanvas.height;
+					ctx.drawImage(videoMappings[videoMapping.value], 0, 0, videoCanvas.width, videoCanvas.height);
+				},
+				randomWalk: function randomWalk(offset, timestamp) {
+					const _color = new THREE.Color();
+					color.forEach((v, idx)=>color[idx]=v*walkerHalflife.value);
+					particles.forEach(particle=>{
+						if (walkerMonochrome.checked) {
+							_color.setStyle(walkerColor.value);
+						} else {
+							_color.fromArray(color, particle.position.meta.index * 3);
+							_color.add(particle.color);
+							particle.color.offsetHSL(0.001, 0, 0);
+						}
+						_color.toArray(color, particle.position.meta.index * 3);
+						let nextLight = particle.position.meta.connections.get(particle.direction);
+						if (!nextLight.meta.connections.get(particle.direction)) {
+							let possible = Array.from(nextLight.meta.connections.entries()).filter(([dir, light]) => light.uuid != particle.position.uuid);
+							[particle.direction, _] = pickRandom(possible);
+						}
+						particle.position = nextLight;
+					});
+				},
+				snakeGame: function snakeGame(offset, timestamp) {
+					color.fill(0.05);
+					if (snake.positions.length == 0) {
+						initSnake();
+					}
+					if (snake.food.positions.length > nSnakeFood.value) {
+						snake.food.positions.length = nSnakeFood.value;
+						snake.food.colors.length = nSnakeFood.value;
+					}
+					while (snake.food.positions.length < nSnakeFood.value) {
+						let possibleFoodPositions = lights.filter(l => !(l.uuid in snake.positions.map(p => p.uuid)) && !(l.uuid in snake.food.positions.map(p => p.uuid)));
+						snake.food.positions.push(pickRandom(lights));
+						let newColor = new THREE.Color();
+						newColor.setHSL(Math.random(), 1, 0.5);
+						snake.food.colors.push(newColor)
+					}
+					let _color = new THREE.Color();
+					_color.setStyle(snakeFoodColor.value);
+					let snakeColors = [...snake.colors];
+					if (!snakePreserveOrder.checked) {
+						snakeColors.sort(function(a,b) {
+							let ac = {}, bc = {};
+							a.getHSL(ac);
+							b.getHSL(bc);
+							return ac.h < bc.h ? 1 : -1;
+						});
+					}
+					snake.food.positions.forEach((light, index) => {
+						if (snakePreserveColor.checked) {
+							_color = snake.food.colors[index].clone();
+						}
+						_color.toArray(color, light.meta.index * 3);
+					});
+					_color.setStyle(snakeColor.value);
+					snake.positions.forEach((light, index) => {
+						if (snakePreserveColor.checked) {
+							_color = snakeColors[index].clone();
+						}
+						_color.toArray(color, light.meta.index * 3);
+					});
+					let snakeHead = snake.positions[0];
+					let nextPosition = snakeHead.meta.connections.get(snake.direction);
+					if (snake.positions.map(p => p.uuid).indexOf(nextPosition.uuid) > -1) {
+						initSnake();
+					}
+					if (!nextPosition.meta.connections.get(snake.direction)) {
+						let possible = Array.from(nextPosition.meta.connections.entries()).filter(([dir, light]) => light.uuid != snakeHead.uuid);
+						[snake.direction, _] = pickRandom(possible);
+					}
+					snake.positions.unshift(nextPosition);
+					let foodCollision = snake.food.positions.indexOf(nextPosition);
+					if (foodCollision > -1) {
+						snake.colors.unshift(snake.food.colors[foodCollision]);
+						snake.food.positions.splice(foodCollision, 1);
+						snake.food.colors.splice(foodCollision, 1);
+					} else {
+						snake.positions.pop();
+					}
+					if (snakeFollow.checked) {
+						let distanceToCamera = camera.position.distanceTo(new THREE.Vector3(0, 0, 0));
+						camera.position.copy(snakeHead.position.clone().normalize().multiplyScalar(distanceToCamera));
+						camera.lookAt(new THREE.Vector3(0, 0, 0));
+					}
+				},
+				spread: function(offset, timestamp) {
+					color.forEach((v, idx)=>color[idx]=v*spreadFade.value);
+					spreads.forEach(({positions, visited, spreadColor, steps}, index) => {
+						let newPositions = [];
+						positions.forEach(p => {
+							let connections = Array.from(p.meta.connections.entries());
+							connections.forEach(([_, c]) => {
+								if (!visited.has(c)) {
+									newPositions.push(c);
+									visited.add(c);
+									spreadColor.toArray(color, c.meta.index * 3);
+								}
+							});
+						});
+						spreads[index] = {positions: newPositions, visited, spreadColor, steps: steps+1};
+					});
+					spreads = spreads.filter(s => s.visited.size < lights.length && s.steps <= spreadSteps.value);
+					if (Math.random() < 1/60*spreadFrequency.value) {
+						let position = pickRandom(lights);
+						spreads.push({
+							positions: [position],
+							visited: new Set([position]),
+							spreadColor: new THREE.Color(`hsl(${360 * Math.random()}, 100%, 50%)`),
+							steps: 1,
+						});
+					}
+				},
+				construction: function(offset, timestamp) {
+					let colors = [
+						new THREE.Color(1,0,0),
+						new THREE.Color(0,1,0),
+						new THREE.Color(0,0,1)
+					];
+					let lengths = [];
+					lights.forEach(l => {
+						let {length, index} = l.meta;
+						if (lengths.indexOf(length) == -1) {
+							lengths.push(length);
+						}
+					});
+					lengths = lengths.sort((a,b) => a < b ? -1 : 1);
+					lights.forEach(l => {
+						let {length, index} = l.meta;
+						colors[lengths.indexOf(length)].toArray(color, index * 3);
+					});
+				},
+				audio: function(offset, timestamp) {
+					let bufferLength = audioAnalyser.frequencyBinCount;
+					let dataArray = new Uint8Array(bufferLength);
+					audioAnalyser.getByteFrequencyData(dataArray);
+					let audioCtx = audioCanvas.getContext("2d");
+					let gradient = audioCtx.createLinearGradient(0, audioCtx.canvas.height, 0, 0);
+					let shift = audioFrequencyShift.checked ? timestamp/800 : 0;
+					for (let i=0; i <= 8; i++) {
+						gradient.addColorStop(i/8, `hsl(${(shift+i/8*120)%360}, 100%, 50%)`);
+					}
+					audioCtx.fillStyle = gradient;
+					audioCtx.fillRect(0, 0, audioCtx.canvas.width, audioCtx.canvas.height);
+					let barWidth = Math.floor((audioCanvas.width / bufferLength) * 3 / 2);
+					let barHeight;
+					let x = 0;
+					for (let i = 0; i < bufferLength; i++) {
+						barHeight = dataArray[i]/2;
+						audioCtx.clearRect(x,0,barWidth,audioCanvas.height-barHeight);
+						audioCtx.clearRect(audioCanvas.width - x,0,-barWidth,audioCanvas.height-barHeight);
+						x += barWidth;
+						if (x >= audioCtx.canvas.width / 2)
+							break;
+					}
+					mapCanvasToDome(audioCtx, "unfolded");
+				},
+				custom: function(offset, timestamp) {
+					eval(customCode.editor.getValue());
+				}
+			};
+
+			function initSnake() {
+				let startingLength = 5;
+				let start = pickRandom(lights);
+				snake.positions = [start];
+				let newColor = new THREE.Color();
+				newColor.setHSL(Math.random(), 1, 0.5);
+				snake.colors = [newColor];
+				[snake.direction, tailDirection, ..._] = Array.from(start.meta.connections.entries()).map(([dir, _])=>dir);
+				while (snake.positions.length < startingLength) {
+					let prevLight = snake.positions[snake.positions.length - 1];
+					let nextLight = prevLight.meta.connections.get(tailDirection);
+					if (!nextLight) {
+						let possibleDirections = Array.from(prevLight.meta.connections.entries()).filter(([dir, light])=>light.uuid != prevLight.uuid);
+						[tailDirection, nextLight] = pickRandom(possibleDirections);
+					}
+					snake.positions.push(nextLight);
+					let newColor = new THREE.Color();
+					newColor.setHSL(Math.random(), 1, 0.5);
+					snake.colors.push(newColor);
+				}
+			}
+
+			const geometry = new THREE.BoxBufferGeometry( 20 * SCALE, 20 * SCALE, LEDDistance );
+			geometry.computeVertexNormals();
+			const material = new THREE.MeshBasicMaterial({color: 0xffffff});
+
 			init();
 			requestAnimationFrame( animate );
 
+			function setAutoRotate() {
+				controls.autoRotate = autoRotate.checked;
+			}
 
 			function init() {
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 15000 );
-				camera.position.x = 0;
-				camera.position.y = -6000;
-				camera.position.z = 6000;
+				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 20000 * SCALE );
+				camera.position.set( 6000 * SCALE, 6000 * SCALE, 0 * SCALE );
 
-				controls = new THREE.TrackballControls( camera );
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
 
 				controls.rotateSpeed = 1.0;
 				controls.zoomSpeed = 1.2;
@@ -43,39 +551,44 @@
 				controls.noZoom = false;
 				controls.noPan = false;
 
+
 				controls.staticMoving = true;
 				controls.dynamicDampingFactor = 0.3;
 
-				controls.keys = [ 65, 83, 68 ];
+				setAutoRotate();
 
 				controls.addEventListener( 'change', render );
 
 				// world
 
 				scene = new THREE.Scene();
-				var material =  new THREE.MeshPhongMaterial( { color:0xffffff, flatShading: true } );
 
 
 				// renderer
 
-				renderer = new THREE.WebGLRenderer( { antialias: false } );
-				renderer.setClearColor( 0x404040 );
+				// renderer.setClearColor( 0x404040 );
 				const light = new THREE.AmbientLight( 0x404040 ); // soft white light
 				scene.add( light );
 				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.outputEncoding = THREE.sRGBEncoding;
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
 				container = document.getElementById( 'container' );
 				container.appendChild( renderer.domElement );
 
 				window.addEventListener( 'resize', onWindowResize, false );
+				let distances = {};
 
-				function drawCylinder(vstart, vend,scene){
+				function createCylinder(vstart, vend, scene){
 					var HALF_PI = Math.PI * .5;
 					var distance = vstart.distanceTo(vend);
+					let fixedDistance = (distance / SCALE).toFixed(2);
+					if (!(fixedDistance in distances))
+						distances[fixedDistance] = 0;
+					distances[fixedDistance]++;
 					var position  = vend.clone().add(vstart).divideScalar(2);
 
-					var cylinder = new THREE.CylinderGeometry(10,10,distance,16,16,false);
+					var cylinder = new THREE.CylinderBufferGeometry(10*SCALE,10*SCALE,distance,16,16,false);
 
 					var orientation = new THREE.Matrix4();//a new orientation matrix to offset pivot
 					var offsetRotation = new THREE.Matrix4();//a matrix to fix pivot rotation
@@ -83,697 +596,262 @@
 					orientation.lookAt(vstart,vend,new THREE.Vector3(0,1,0));//look at destination
 					offsetRotation.makeRotationX(HALF_PI);//rotate 90 degs on X
 					orientation.multiply(offsetRotation);//combine orientation with rotation transformations
-					cylinder.applyMatrix4(orientation)
+					let quaternion = new THREE.Quaternion();
+					let scale = new THREE.Vector3();
+					orientation.decompose(new THREE.Vector3(), quaternion, scale);
+					orientation.compose(position, quaternion, scale);
+					cylinder.applyMatrix4(orientation);
 
-					var mesh = new THREE.Mesh(cylinder,tubeMaterial);
-					mesh.position.copy( position );
-					scene.add(mesh);
+					let LEDCount = Math.floor((distance - LEDDistance) / LEDDistance);
+					let offsetDistance = (distance - (LEDCount * LEDDistance)) / 2;
+					let directionVector = vend.clone().sub(vstart).normalize();
+					let offsetVector = directionVector.clone().multiplyScalar(offsetDistance);
+					let LEDVector = directionVector.clone().multiplyScalar(LEDDistance);
+
+					// construct "lights" for this particular cylinder. Later we convert these to instances.
+					let directionA = Symbol();
+					let directionB = Symbol();
+					for (let idx = 0; idx <= LEDCount; idx++) {
+						let lightMesh = new THREE.Mesh(geometry, material);
+						lightMesh.position.copy(vstart.clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
+						lightMesh.lookAt(vend);
+						lights.push(lightMesh);
+						let {x:y, y:z, z:x} = lightMesh.position;
+						let angleX = Math.atan2(y, x);
+						let angleZ = Math.atan2(Math.sqrt(x**2 + y**2), z);
+						if (x < minX) minX = x;
+						if (y < minY) minY = y;
+						if (z < minZ) minZ = z;
+						if (angleZ < minAngleZ) minAngleZ = angleZ;
+						if (x > maxX) maxX = x;
+						if (y > maxY) maxY = y;
+						if (z > maxZ) maxZ = z;
+						if (angleZ > maxAngleZ) maxAngleZ = angleZ;
+						lightMesh.meta = {
+							x, y, z,
+							angleX, angleZ,
+							connections: new Map(),
+							length: fixedDistance
+						};
+						// create connections within each tube. The rest will be detected later
+						if (idx > 0) {
+							lightMesh.meta.connections.set(directionA, lights[lights.length - 2]);
+							lights[lights.length - 2].meta.connections.set(directionB, lightMesh);
+						}
+					}
+
+					return cylinder;
 				}
 
 
 				let facets, vertexes, vertexGroups = [], edges=[];
 				let uniqueEdges = [
-					[
-						[1779.151961914786,2448.7925941502604,0],
-						[1243.5667427870335,2769.4638366627887,1107.002042513259]
-					],
-					[
-						[621.7833713935172,2971.493500818643,49.16098752175943],
-						[1779.151961914786,2448.7925941502604,0]
-					],
-					[
-						[621.7833713935172,2971.493500818643,49.16098752175943],
-						[1243.5667427870335,2769.4638366627887,1107.002042513259]
-					],
-					[
-						[1243.5667427870335,1711.6227816712894,2818.624824184552],
-						[0,1870.7110791327584,3026.874109167793]
-					],
-					[
-						[621.7833713935154,855.8113908356414,3472.4065508643475],
-						[0,1870.7110791327584,3026.874109167793]
-					],
-					[
-						[621.7833713935154,855.8113908356414,3472.4065508643475],
-						[1243.5667427870335,1711.6227816712894,2818.624824184552]
-					],
-					[
-						[2633.9166285019264,202.0296641558509,2164.843097504758],
-						[2012.133257108411,-653.7817266797988,2818.624824184552]
-					],
-					[
-						[2621.349872596708,-851.7282043242893,1956.2066987911328],
-						[2012.133257108411,-653.7817266797988,2818.624824184552]
-					],
-					[
-						[2633.9166285019264,202.0296641558509,2164.843097504758],
-						[2621.349872596708,-851.7282043242893,1956.2066987911328]
-					],
-					[
-						[2878.72834552912,-935.355539566418,0],
-						[2633.9166285019264,-1509.5931175154503,1107.00204251326]
-					],
-					[
-						[2633.9166285019264,-1509.5931175154503,1107.00204251326],
-						[2249.6333713412378,-2038.513645011201,49.160987521760575]
-					],
-					[
-						[2878.72834552912,-935.355539566418,0],
-						[2249.6333713412378,-2038.513645011201,49.160987521760575]
-					],
-					[
-						[1779.151961914753,578.0815150175193,3026.874109167793],
-						[1243.5667427870335,1711.6227816712894,2818.624824184552]
-					],
-					[
-						[621.7833713935154,855.8113908356414,3472.4065508643475],
-						[1779.151961914753,578.0815150175193,3026.874109167793]
-					],
-					[
-						[621.7833713935154,855.8113908356414,3472.4065508643475],
-						[1006.0666285542147,-326.89086333990076,3472.4065508643444]
-					],
-					[
-						[1779.151961914753,578.0815150175193,3026.874109167793],
-						[1006.0666285542147,-326.89086333990076,3472.4065508643444]
-					],
-					[
-						[2249.633371341245,1384.7319183313923,2164.8430975047595],
-						[1243.5667427870335,1711.6227816712894,2818.624824184552]
-					],
-					[
-						[2249.633371341245,1384.7319183313923,2164.8430975047595],
-						[1779.151961914753,578.0815150175193,3026.874109167793]
-					],
-					[
-						[-2633.9166285019287,202.02966415586275,2164.8430975047595],
-						[-2249.633371341231,1384.7319183313994,2164.843097504758]
-					],
-					[
-						[-2633.9166285019287,202.02966415586275,2164.8430975047595],
-						[-1779.151961914748,578.0815150175213,3026.874109167793]
-					],
-					[
-						[-2249.633371341231,1384.7319183313994,2164.843097504758],
-						[-1779.151961914748,578.0815150175213,3026.874109167793]
-					],
-					[
-						[3018.199885662619,326.89086333989434,49.16098752175943],
-						[3018.199885662619,-326.89086333990167,1107.002042513259]
-					],
-					[
-						[3018.199885662619,-326.89086333990167,1107.002042513259],
-						[2878.72834552912,-935.355539566418,0]
-					],
-					[
-						[3018.199885662619,326.89086333989434,49.16098752175943],
-						[2878.72834552912,-935.355539566418,0]
-					],
-					[
-						[2012.133257108411,-653.7817266797988,2818.624824184552],
-						[1779.151961914753,578.0815150175193,3026.874109167793]
-					],
-					[
-						[2012.133257108411,-653.7817266797988,2818.624824184552],
-						[1006.0666285542147,-326.89086333990076,3472.4065508643444]
-					],
-					[
-						[1779.1519619147455,-2448.7925941502913,1156.1630300350205],
-						[1243.5667427870262,-2769.463836662794,49.16098752175943]
-					],
-					[
-						[2249.6333713412378,-2038.513645011201,49.160987521760575],
-						[1243.5667427870262,-2769.463836662794,49.16098752175943]
-					],
-					[
-						[2249.6333713412378,-2038.513645011201,49.160987521760575],
-						[1779.1519619147455,-2448.7925941502913,1156.1630300350205]
-					],
-					[
-						[3018.199885662619,-326.89086333990167,1107.002042513259],
-						[2878.728345529135,935.3555395663697,1156.1630300350205]
-					],
-					[
-						[3018.199885662619,326.89086333989434,49.16098752175943],
-						[2878.728345529135,935.3555395663697,1156.1630300350205]
-					],
-					[
-						[-3018.1998856626215,-326.89086333988706,1107.00204251326],
-						[-2633.9166285019287,-1509.5931175154356,1107.002042513259]
-					],
-					[
-						[-2633.9166285019287,-1509.5931175154356,1107.002042513259],
-						[-2621.349872596707,-851.7282043242893,1956.2066987911328]
-					],
-					[
-						[-3018.1998856626215,-326.89086333988706,1107.00204251326],
-						[-2621.349872596707,-851.7282043242893,1956.2066987911328]
-					],
-					[
-						[-621.7833713935245,-2971.493500818648,1107.00204251326],
-						[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]
-					],
-					[
-						[0,-2756.2503675472317,1956.2066987911328],
-						[-621.7833713935245,-2971.493500818648,1107.00204251326]
-					],
-					[
-						[0,-2756.2503675472317,1956.2066987911328],
-						[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]
-					],
-					[
-						[621.7833713935154,855.8113908356414,3472.4065508643475],
-						[-621.7833713935154,855.8113908356414,3472.4065508643466]
-					],
-					[
-						[0,0,3659.663107439707],
-						[-621.7833713935154,855.8113908356414,3472.4065508643466]
-					],
-					[
-						[621.7833713935154,855.8113908356414,3472.4065508643475],
-						[0,0,3659.663107439707]
-					],
-					[
-						[2633.9166285019264,202.0296641558509,2164.843097504758],
-						[1779.151961914753,578.0815150175193,3026.874109167793]
-					],
-					[
-						[2249.633371341245,2038.5136450111863,1107.00204251326],
-						[2249.633371341245,1384.7319183313923,2164.8430975047595]
-					],
-					[
-						[2878.728345529135,935.3555395663697,1156.1630300350205],
-						[2249.633371341245,1384.7319183313923,2164.8430975047595]
-					],
-					[
-						[2878.728345529135,935.3555395663697,1156.1630300350205],
-						[2249.633371341245,2038.5136450111863,1107.00204251326]
-					],
-					[
-						[-1779.1519619147641,-2448.7925941502767,1156.1630300350205],
-						[-1243.5667427870394,-2769.463836662794,49.160987521760575]
-					],
-					[
-						[-621.7833713935245,-2971.493500818648,1107.00204251326],
-						[-1243.5667427870394,-2769.463836662794,49.160987521760575]
-					],
-					[
-						[-621.7833713935245,-2971.493500818648,1107.00204251326],
-						[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]
-					],
-					[
-						[2633.9166285019264,202.0296641558509,2164.843097504758],
-						[2249.633371341245,1384.7319183313923,2164.8430975047595]
-					],
-					[
-						[1243.5667427870335,2769.4638366627887,1107.002042513259],
-						[1.277263992169454e-11,3026.874109167803,1156.1630300350205]
-					],
-					[
-						[621.7833713935172,2971.493500818643,49.16098752175943],
-						[1.277263992169454e-11,3026.874109167803,1156.1630300350205]
-					],
-					[
-						[621.7833713935099,-2971.493500818646,1107.002042513259],
-						[1006.0666285542037,-2442.5729733228973,2164.843097504758]
-					],
-					[
-						[621.7833713935099,-2971.493500818646,1107.002042513259],
-						[1779.1519619147455,-2448.7925941502913,1156.1630300350205]
-					],
-					[
-						[1779.1519619147455,-2448.7925941502913,1156.1630300350205],
-						[1006.0666285542037,-2442.5729733228973,2164.843097504758]
-					],
-					[
-						[1006.0666285542147,-326.89086333990076,3472.4065508643444],
-						[0,0,3659.663107439707]
-					],
-					[
-						[-2633.9166285019214,1509.5931175154428,49.16098752175943],
-						[-1779.1519619147205,2448.792594150308,0]
-					],
-					[
-						[-2633.9166285019214,1509.5931175154428,49.16098752175943],
-						[-2249.633371341229,2038.5136450111956,1107.002042513259]
-					],
-					[
-						[-2249.633371341229,2038.5136450111956,1107.002042513259],
-						[-1779.1519619147205,2448.792594150308,0]
-					],
-					[
-						[-1779.151961914748,578.0815150175213,3026.874109167793],
-						[-1006.0666285542079,-326.8908633398989,3472.4065508643457]
-					],
-					[
-						[-2012.1332571084135,-653.7817266797869,2818.624824184552],
-						[-1779.151961914748,578.0815150175213,3026.874109167793]
-					],
-					[
-						[-2012.1332571084135,-653.7817266797869,2818.624824184552],
-						[-1006.0666285542079,-326.8908633398989,3472.4065508643457]
-					],
-					[
-						[-2633.9166285019287,202.02966415586275,2164.8430975047595],
-						[-2012.1332571084135,-653.7817266797869,2818.624824184552]
-					],
-					[
-						[-621.7833713935154,855.8113908356414,3472.4065508643466],
-						[-1779.151961914748,578.0815150175213,3026.874109167793]
-					],
-					[
-						[-621.7833713935154,855.8113908356414,3472.4065508643466],
-						[-1006.0666285542079,-326.8908633398989,3472.4065508643457]
-					],
-					[
-						[-621.7833713935154,2567.4341725069353,2164.843097504758],
-						[-1243.5667427870321,1711.6227816712894,2818.624824184553]
-					],
-					[
-						[-621.7833713935154,2567.4341725069353,2164.843097504758],
-						[-1620.0833176699705,2229.8533880979076,1956.2066987911328]
-					],
-					[
-						[-1620.0833176699705,2229.8533880979076,1956.2066987911328],
-						[-1243.5667427870321,1711.6227816712894,2818.624824184553]
-					],
-					[
-						[-3018.1998856626215,326.8908633399071,49.160987521760575],
-						[-2878.728345529122,935.3555395663951,1156.1630300350205]
-					],
-					[
-						[-3018.1998856626215,326.8908633399071,49.160987521760575],
-						[-3018.1998856626215,-326.89086333988706,1107.00204251326]
-					],
-					[
-						[-3018.1998856626215,-326.89086333988706,1107.00204251326],
-						[-2878.728345529122,935.3555395663951,1156.1630300350205]
-					],
-					[
-						[-1620.0833176699705,2229.8533880979076,1956.2066987911328],
-						[-1243.5667427870285,2769.4638366627923,1107.002042513259]
-					],
-					[
-						[-2249.633371341229,2038.5136450111956,1107.002042513259],
-						[-1243.5667427870285,2769.4638366627923,1107.002042513259]
-					],
-					[
-						[-2249.633371341229,2038.5136450111956,1107.002042513259],
-						[-1620.0833176699705,2229.8533880979076,1956.2066987911328]
-					],
-					[
-						[-621.7833713935154,2971.493500818643,49.16098752175943],
-						[-1243.5667427870285,2769.4638366627923,1107.002042513259]
-					],
-					[
-						[-621.7833713935154,2971.493500818643,49.16098752175943],
-						[-1779.1519619147205,2448.792594150308,0]
-					],
-					[
-						[-1779.1519619147205,2448.792594150308,0],
-						[-1243.5667427870285,2769.4638366627923,1107.002042513259]
-					],
-					[
-						[-2249.633371341231,1384.7319183313994,2164.843097504758],
-						[-1620.0833176699705,2229.8533880979076,1956.2066987911328]
-					],
-					[
-						[-2249.633371341231,1384.7319183313994,2164.843097504758],
-						[-1243.5667427870321,1711.6227816712894,2818.624824184553]
-					],
-					[
-						[-621.7833713935154,855.8113908356414,3472.4065508643466],
-						[-1243.5667427870321,1711.6227816712894,2818.624824184553]
-					],
-					[
-						[-1779.151961914748,578.0815150175213,3026.874109167793],
-						[-1243.5667427870321,1711.6227816712894,2818.624824184553]
-					],
-					[
-						[0,0,3659.663107439707],
-						[-1006.0666285542079,-326.8908633398989,3472.4065508643457]
-					],
-					[
-						[-3018.1998856626215,-326.89086333988706,1107.00204251326],
-						[-2878.728345529142,-935.3555395663441,0]
-					],
-					[
-						[-2878.728345529142,-935.3555395663441,0],
-						[-2633.9166285019287,-1509.5931175154356,1107.002042513259]
-					],
-					[
-						[3018.199885662619,-326.89086333990167,1107.002042513259],
-						[2621.349872596708,-851.7282043242893,1956.2066987911328]
-					],
-					[
-						[3018.199885662619,-326.89086333990167,1107.002042513259],
-						[2633.9166285019264,202.0296641558509,2164.843097504758]
-					],
-					[
-						[2012.133257108415,-1711.6227816713038,2164.8430975047595],
-						[2012.133257108411,-653.7817266797988,2818.624824184552]
-					],
-					[
-						[2621.349872596708,-851.7282043242893,1956.2066987911328],
-						[2012.133257108415,-1711.6227816713038,2164.8430975047595]
-					],
-					[
-						[-2878.728345529122,935.3555395663951,1156.1630300350205],
-						[-2249.633371341231,1384.7319183313994,2164.843097504758]
-					],
-					[
-						[-2878.728345529122,935.3555395663951,1156.1630300350205],
-						[-2633.9166285019287,202.02966415586275,2164.8430975047595]
-					],
-					[
-						[-2012.1332571084135,-1711.6227816712894,2164.843097504758],
-						[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]
-					],
-					[
-						[-2012.1332571084135,-1711.6227816712894,2164.843097504758],
-						[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]
-					],
-					[
-						[-1779.1519619147641,-2448.7925941502767,1156.1630300350205],
-						[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]
-					],
-					[
-						[0,1870.7110791327584,3026.874109167793],
-						[-621.7833713935154,855.8113908356414,3472.4065508643466]
-					],
-					[
-						[0,1870.7110791327584,3026.874109167793],
-						[-1243.5667427870321,1711.6227816712894,2818.624824184553]
-					],
-					[
-						[2012.133257108415,-1711.6227816713038,2164.8430975047595],
-						[1006.0666285542037,-2442.5729733228973,2164.843097504758]
-					],
-					[
-						[2012.133257108415,-1711.6227816713038,2164.8430975047595],
-						[1779.1519619147455,-2448.7925941502913,1156.1630300350205]
-					],
-					[
-						[2249.633371341245,1384.7319183313923,2164.8430975047595],
-						[1620.0833176699705,2229.8533880979057,1956.2066987911328]
-					],
-					[
-						[1620.0833176699705,2229.8533880979057,1956.2066987911328],
-						[1243.5667427870335,1711.6227816712894,2818.624824184552]
-					],
-					[
-						[-1006.0666285542079,-326.8908633398989,3472.4065508643457],
-						[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]
-					],
-					[
-						[0,0,3659.663107439707],
-						[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]
-					],
-					[
-						[-621.7833713935245,-2971.493500818648,1107.00204251326],
-						[-4.0142582611039987e-11,-3026.874109167806,0]
-					],
-					[
-						[621.7833713935099,-2971.493500818646,1107.002042513259],
-						[-4.0142582611039987e-11,-3026.874109167806,0]
-					],
-					[
-						[621.7833713935099,-2971.493500818646,1107.002042513259],
-						[-621.7833713935245,-2971.493500818648,1107.00204251326]
-					],
-					[
-						[-2249.633371341231,1384.7319183313994,2164.843097504758],
-						[-2249.633371341229,2038.5136450111956,1107.002042513259]
-					],
-					[
-						[621.7833713935172,2971.493500818643,49.16098752175943],
-						[-621.7833713935154,2971.493500818643,49.16098752175943]
-					],
-					[
-						[1.277263992169454e-11,3026.874109167803,1156.1630300350205],
-						[-621.7833713935154,2971.493500818643,49.16098752175943]
-					],
-					[
-						[-621.7833713935154,2567.4341725069353,2164.843097504758],
-						[-1243.5667427870285,2769.4638366627923,1107.002042513259]
-					],
-					[
-						[621.7833713935172,2567.4341725069353,2164.843097504758],
-						[1620.0833176699705,2229.8533880979057,1956.2066987911328]
-					],
-					[
-						[1620.0833176699705,2229.8533880979057,1956.2066987911328],
-						[1243.5667427870335,2769.4638366627887,1107.002042513259]
-					],
-					[
-						[621.7833713935172,2567.4341725069353,2164.843097504758],
-						[1243.5667427870335,2769.4638366627887,1107.002042513259]
-					],
-					[
-						[1006.0666285542037,-2442.5729733228973,2164.843097504758],
-						[0,-2756.2503675472317,1956.2066987911328]
-					],
-					[
-						[621.7833713935099,-2971.493500818646,1107.002042513259],
-						[0,-2756.2503675472317,1956.2066987911328]
-					],
-					[
-						[621.7833713935172,2567.4341725069353,2164.843097504758],
-						[1.277263992169454e-11,3026.874109167803,1156.1630300350205]
-					],
-					[
-						[1.277263992169454e-11,3026.874109167803,1156.1630300350205],
-						[-621.7833713935154,2567.4341725069353,2164.843097504758]
-					],
-					[
-						[621.7833713935172,2567.4341725069353,2164.843097504758],
-						[-621.7833713935154,2567.4341725069353,2164.843097504758]
-					],
-					[
-						[2249.633371341245,2038.5136450111863,1107.00204251326],
-						[1779.151961914786,2448.7925941502604,0]
-					],
-					[
-						[2249.633371341245,2038.5136450111863,1107.00204251326],
-						[1243.5667427870335,2769.4638366627887,1107.002042513259]
-					],
-					[
-						[1006.0666285542147,-326.89086333990076,3472.4065508643444],
-						[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]
-					],
-					[
-						[-3018.1998856626215,-326.89086333988706,1107.00204251326],
-						[-2633.9166285019287,202.02966415586275,2164.8430975047595]
-					],
-					[
-						[2633.9166285019264,-1509.5931175154503,1107.00204251326],
-						[2012.133257108415,-1711.6227816713038,2164.8430975047595]
-					],
-					[
-						[2633.9166285019264,-1509.5931175154503,1107.00204251326],
-						[2621.349872596708,-851.7282043242893,1956.2066987911328]
-					],
-					[
-						[3018.199885662619,-326.89086333990167,1107.002042513259],
-						[2633.9166285019264,-1509.5931175154503,1107.00204251326]
-					],
-					[
-						[2878.728345529135,935.3555395663697,1156.1630300350205],
-						[2633.9166285019264,202.0296641558509,2164.843097504758]
-					],
-					[
-						[2878.728345529135,935.3555395663697,1156.1630300350205],
-						[2633.9166285019373,1509.5931175154356,49.160987521760575]
-					],
-					[
-						[3018.199885662619,326.89086333989434,49.16098752175943],
-						[2633.9166285019373,1509.5931175154356,49.160987521760575]
-					],
-					[
-						[-2012.1332571084135,-653.7817266797869,2818.624824184552],
-						[-1099.576383614374,-1513.4370545838972,3026.874109167793]
-					],
-					[
-						[-2012.1332571084135,-653.7817266797869,2818.624824184552],
-						[-2012.1332571084135,-1711.6227816712894,2164.843097504758]
-					],
-					[
-						[-2012.1332571084135,-1711.6227816712894,2164.843097504758],
-						[-1099.576383614374,-1513.4370545838972,3026.874109167793]
-					],
-					[
-						[-1099.576383614374,-1513.4370545838972,3026.874109167793],
-						[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]
-					],
-					[
-						[-2633.9166285019287,-1509.5931175154356,1107.002042513259],
-						[-2249.6333713412364,-2038.5136450111863,49.16098752175943]
-					],
-					[
-						[-2249.6333713412364,-2038.5136450111863,49.16098752175943],
-						[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]
-					],
-					[
-						[-2633.9166285019287,-1509.5931175154356,1107.002042513259],
-						[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]
-					],
-					[
-						[-1099.576383614374,-1513.4370545838972,3026.874109167793],
-						[-1006.0666285542079,-326.8908633398989,3472.4065508643457]
-					],
-					[
-						[-2878.728345529122,935.3555395663951,1156.1630300350205],
-						[-2633.9166285019214,1509.5931175154428,49.16098752175943]
-					],
-					[
-						[-2878.728345529122,935.3555395663951,1156.1630300350205],
-						[-2249.633371341229,2038.5136450111956,1107.002042513259]
-					],
-					[
-						[2633.9166285019373,1509.5931175154356,49.160987521760575],
-						[2249.633371341245,2038.5136450111863,1107.00204251326]
-					],
-					[
-						[-2633.9166285019287,-1509.5931175154356,1107.002042513259],
-						[-2012.1332571084135,-1711.6227816712894,2164.843097504758]
-					],
-					[
-						[-2621.349872596707,-851.7282043242893,1956.2066987911328],
-						[-2012.1332571084135,-1711.6227816712894,2164.843097504758]
-					],
-					[
-						[-2633.9166285019287,202.02966415586275,2164.8430975047595],
-						[-2621.349872596707,-851.7282043242893,1956.2066987911328]
-					],
-					[
-						[-2621.349872596707,-851.7282043242893,1956.2066987911328],
-						[-2012.1332571084135,-653.7817266797869,2818.624824184552]
-					],
-					[
-						[0,1870.7110791327584,3026.874109167793],
-						[-621.7833713935154,2567.4341725069353,2164.843097504758]
-					],
-					[
-						[1.277263992169454e-11,3026.874109167803,1156.1630300350205],
-						[-1243.5667427870285,2769.4638366627923,1107.002042513259]
-					],
-					[
-						[2249.633371341245,2038.5136450111863,1107.00204251326],
-						[1620.0833176699705,2229.8533880979057,1956.2066987911328]
-					],
-					[
-						[2633.9166285019373,1509.5931175154356,49.160987521760575],
-						[1779.151961914786,2448.7925941502604,0]
-					],
-					[
-						[621.7833713935172,2567.4341725069353,2164.843097504758],
-						[1243.5667427870335,1711.6227816712894,2818.624824184552]
-					],
-					[
-						[-1099.576383614374,-1513.4370545838972,3026.874109167793],
-						[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]
-					],
-					[
-						[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552],
-						[-1099.576383614374,-1513.4370545838972,3026.874109167793]
-					],
-					[
-						[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552],
-						[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]
-					],
-					[
-						[-3018.1998856626215,326.8908633399071,49.160987521760575],
-						[-2878.728345529142,-935.3555395663441,0]
-					],
-					[
-						[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552],
-						[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]
-					],
-					[
-						[-2878.728345529142,-935.3555395663441,0],
-						[-2249.6333713412364,-2038.5136450111863,49.16098752175943]
-					],
-					[
-						[-4.0142582611039987e-11,-3026.874109167806,0],
-						[-1243.5667427870394,-2769.463836662794,49.160987521760575]
-					],
-					[
-						[2633.9166285019264,-1509.5931175154503,1107.00204251326],
-						[1779.1519619147455,-2448.7925941502913,1156.1630300350205]
-					],
-					[
-						[0,-2756.2503675472317,1956.2066987911328],
-						[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]
-					],
-					[
-						[1006.0666285542037,-2442.5729733228973,2164.843097504758],
-						[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]
-					],
-					[
-						[1099.576383614374,-1513.4370545839008,3026.874109167793],
-						[1006.0666285542147,-326.89086333990076,3472.4065508643444]
-					],
-					[
-						[2012.133257108411,-653.7817266797988,2818.624824184552],
-						[1099.576383614374,-1513.4370545839008,3026.874109167793]
-					],
-					[
-						[1099.576383614374,-1513.4370545839008,3026.874109167793],
-						[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]
-					],
-					[
-						[2012.133257108415,-1711.6227816713038,2164.8430975047595],
-						[1099.576383614374,-1513.4370545839008,3026.874109167793]
-					],
-					[
-						[-3018.1998856626215,326.8908633399071,49.160987521760575],
-						[-2633.9166285019214,1509.5931175154428,49.16098752175943]
-					],
-					[
-						[621.7833713935099,-2971.493500818646,1107.002042513259],
-						[1243.5667427870262,-2769.463836662794,49.16098752175943]
-					],
-					[
-						[-2249.6333713412364,-2038.5136450111863,49.16098752175943],
-						[-1243.5667427870394,-2769.463836662794,49.160987521760575]
-					],
-					[
-						[1243.5667427870262,-2769.463836662794,49.16098752175943],
-						[-4.0142582611039987e-11,-3026.874109167806,0]
-					],
-					[
-						[1099.576383614374,-1513.4370545839008,3026.874109167793],
-						[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]
-					],
-					[
-						[1099.576383614374,-1513.4370545839008,3026.874109167793],
-						[1006.0666285542037,-2442.5729733228973,2164.843097504758]
-					],
-					[
-						[621.7833713935172,2567.4341725069353,2164.843097504758],
-						[0,1870.7110791327584,3026.874109167793]
-					]
-				].map(points=>points.map(point=>new THREE.Vector3(...point)));
-				let LEDDistance = 60;
+					[[1779.151961914786,2448.7925941502604,0],[1243.5667427870335,2769.4638366627887,1107.002042513259]],
+					[[621.7833713935172,2971.493500818643,49.16098752175943],[1779.151961914786,2448.7925941502604,0]],
+					[[621.7833713935172,2971.493500818643,49.16098752175943],[1243.5667427870335,2769.4638366627887,1107.002042513259]],
+					[[1243.5667427870335,1711.6227816712894,2818.624824184552],[0,1870.7110791327584,3026.874109167793]],
+					[[621.7833713935154,855.8113908356414,3472.4065508643475],[0,1870.7110791327584,3026.874109167793]],
+					[[621.7833713935154,855.8113908356414,3472.4065508643475],[1243.5667427870335,1711.6227816712894,2818.624824184552]],
+					[[2633.9166285019264,202.0296641558509,2164.843097504758],[2012.133257108411,-653.7817266797988,2818.624824184552]],
+					[[2621.349872596708,-851.7282043242893,1956.2066987911328],[2012.133257108411,-653.7817266797988,2818.624824184552]],
+					[[2633.9166285019264,202.0296641558509,2164.843097504758],[2621.349872596708,-851.7282043242893,1956.2066987911328]],
+					[[2878.72834552912,-935.355539566418,0],[2633.9166285019264,-1509.5931175154503,1107.00204251326]],
+					[[2633.9166285019264,-1509.5931175154503,1107.00204251326],[2249.6333713412378,-2038.513645011201,49.160987521760575]],
+					[[2878.72834552912,-935.355539566418,0],[2249.6333713412378,-2038.513645011201,49.160987521760575]],
+					[[1779.151961914753,578.0815150175193,3026.874109167793],[1243.5667427870335,1711.6227816712894,2818.624824184552]],
+					[[621.7833713935154,855.8113908356414,3472.4065508643475],[1779.151961914753,578.0815150175193,3026.874109167793]],
+					[[621.7833713935154,855.8113908356414,3472.4065508643475],[1006.0666285542147,-326.89086333990076,3472.4065508643444]],
+					[[1779.151961914753,578.0815150175193,3026.874109167793],[1006.0666285542147,-326.89086333990076,3472.4065508643444]],
+					[[2249.633371341245,1384.7319183313923,2164.8430975047595],[1243.5667427870335,1711.6227816712894,2818.624824184552]],
+					[[2249.633371341245,1384.7319183313923,2164.8430975047595],[1779.151961914753,578.0815150175193,3026.874109167793]],
+					[[-2633.9166285019287,202.02966415586275,2164.8430975047595],[-2249.633371341231,1384.7319183313994,2164.843097504758]],
+					[[-2633.9166285019287,202.02966415586275,2164.8430975047595],[-1779.151961914748,578.0815150175213,3026.874109167793]],
+					[[-2249.633371341231,1384.7319183313994,2164.843097504758],[-1779.151961914748,578.0815150175213,3026.874109167793]],
+					[[3018.199885662619,326.89086333989434,49.16098752175943],[3018.199885662619,-326.89086333990167,1107.002042513259]],
+					[[3018.199885662619,-326.89086333990167,1107.002042513259],[2878.72834552912,-935.355539566418,0]],
+					[[3018.199885662619,326.89086333989434,49.16098752175943],[2878.72834552912,-935.355539566418,0]],
+					[[2012.133257108411,-653.7817266797988,2818.624824184552],[1779.151961914753,578.0815150175193,3026.874109167793]],
+					[[2012.133257108411,-653.7817266797988,2818.624824184552],[1006.0666285542147,-326.89086333990076,3472.4065508643444]],
+					[[1779.1519619147455,-2448.7925941502913,1156.1630300350205],[1243.5667427870262,-2769.463836662794,49.16098752175943]],
+					[[2249.6333713412378,-2038.513645011201,49.160987521760575],[1243.5667427870262,-2769.463836662794,49.16098752175943]],
+					[[2249.6333713412378,-2038.513645011201,49.160987521760575],[1779.1519619147455,-2448.7925941502913,1156.1630300350205]],
+					[[3018.199885662619,-326.89086333990167,1107.002042513259],[2878.728345529135,935.3555395663697,1156.1630300350205]],
+					[[3018.199885662619,326.89086333989434,49.16098752175943],[2878.728345529135,935.3555395663697,1156.1630300350205]],
+					[[-3018.1998856626215,-326.89086333988706,1107.00204251326],[-2633.9166285019287,-1509.5931175154356,1107.002042513259]],
+					[[-2633.9166285019287,-1509.5931175154356,1107.002042513259],[-2621.349872596707,-851.7282043242893,1956.2066987911328]],
+					[[-3018.1998856626215,-326.89086333988706,1107.00204251326],[-2621.349872596707,-851.7282043242893,1956.2066987911328]],
+					[[-621.7833713935245,-2971.493500818648,1107.00204251326],[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]],
+					[[0,-2756.2503675472317,1956.2066987911328],[-621.7833713935245,-2971.493500818648,1107.00204251326]],
+					[[0,-2756.2503675472317,1956.2066987911328],[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]],
+					[[621.7833713935154,855.8113908356414,3472.4065508643475],[-621.7833713935154,855.8113908356414,3472.4065508643466]],
+					[[0,0,3659.663107439707],[-621.7833713935154,855.8113908356414,3472.4065508643466]],
+					[[621.7833713935154,855.8113908356414,3472.4065508643475],[0,0,3659.663107439707]],
+					[[2633.9166285019264,202.0296641558509,2164.843097504758],[1779.151961914753,578.0815150175193,3026.874109167793]],
+					[[2249.633371341245,2038.5136450111863,1107.00204251326],[2249.633371341245,1384.7319183313923,2164.8430975047595]],
+					[[2878.728345529135,935.3555395663697,1156.1630300350205],[2249.633371341245,1384.7319183313923,2164.8430975047595]],
+					[[2878.728345529135,935.3555395663697,1156.1630300350205],[2249.633371341245,2038.5136450111863,1107.00204251326]],
+					[[-1779.1519619147641,-2448.7925941502767,1156.1630300350205],[-1243.5667427870394,-2769.463836662794,49.160987521760575]],
+					[[-621.7833713935245,-2971.493500818648,1107.00204251326],[-1243.5667427870394,-2769.463836662794,49.160987521760575]],
+					[[-621.7833713935245,-2971.493500818648,1107.00204251326],[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]],
+					[[2633.9166285019264,202.0296641558509,2164.843097504758],[2249.633371341245,1384.7319183313923,2164.8430975047595]],
+					[[1243.5667427870335,2769.4638366627887,1107.002042513259],[1.277263992169454e-11,3026.874109167803,1156.1630300350205]],
+					[[621.7833713935172,2971.493500818643,49.16098752175943],[1.277263992169454e-11,3026.874109167803,1156.1630300350205]],
+					[[621.7833713935099,-2971.493500818646,1107.002042513259],[1006.0666285542037,-2442.5729733228973,2164.843097504758]],
+					[[621.7833713935099,-2971.493500818646,1107.002042513259],[1779.1519619147455,-2448.7925941502913,1156.1630300350205]],
+					[[1779.1519619147455,-2448.7925941502913,1156.1630300350205],[1006.0666285542037,-2442.5729733228973,2164.843097504758]],
+					[[1006.0666285542147,-326.89086333990076,3472.4065508643444],[0,0,3659.663107439707]],
+					[[-2633.9166285019214,1509.5931175154428,49.16098752175943],[-1779.1519619147205,2448.792594150308,0]],
+					[[-2633.9166285019214,1509.5931175154428,49.16098752175943],[-2249.633371341229,2038.5136450111956,1107.002042513259]],
+					[[-2249.633371341229,2038.5136450111956,1107.002042513259],[-1779.1519619147205,2448.792594150308,0]],
+					[[-1779.151961914748,578.0815150175213,3026.874109167793],[-1006.0666285542079,-326.8908633398989,3472.4065508643457]],
+					[[-2012.1332571084135,-653.7817266797869,2818.624824184552],[-1779.151961914748,578.0815150175213,3026.874109167793]],
+					[[-2012.1332571084135,-653.7817266797869,2818.624824184552],[-1006.0666285542079,-326.8908633398989,3472.4065508643457]],
+					[[-2633.9166285019287,202.02966415586275,2164.8430975047595],[-2012.1332571084135,-653.7817266797869,2818.624824184552]],
+					[[-621.7833713935154,855.8113908356414,3472.4065508643466],[-1779.151961914748,578.0815150175213,3026.874109167793]],
+					[[-621.7833713935154,855.8113908356414,3472.4065508643466],[-1006.0666285542079,-326.8908633398989,3472.4065508643457]],
+					[[-621.7833713935154,2567.4341725069353,2164.843097504758],[-1243.5667427870321,1711.6227816712894,2818.624824184553]],
+					[[-621.7833713935154,2567.4341725069353,2164.843097504758],[-1620.0833176699705,2229.8533880979076,1956.2066987911328]],
+					[[-1620.0833176699705,2229.8533880979076,1956.2066987911328],[-1243.5667427870321,1711.6227816712894,2818.624824184553]],
+					[[-3018.1998856626215,326.8908633399071,49.160987521760575],[-2878.728345529122,935.3555395663951,1156.1630300350205]],
+					[[-3018.1998856626215,326.8908633399071,49.160987521760575],[-3018.1998856626215,-326.89086333988706,1107.00204251326]],
+					[[-3018.1998856626215,-326.89086333988706,1107.00204251326],[-2878.728345529122,935.3555395663951,1156.1630300350205]],
+					[[-1620.0833176699705,2229.8533880979076,1956.2066987911328],[-1243.5667427870285,2769.4638366627923,1107.002042513259]],
+					[[-2249.633371341229,2038.5136450111956,1107.002042513259],[-1243.5667427870285,2769.4638366627923,1107.002042513259]],
+					[[-2249.633371341229,2038.5136450111956,1107.002042513259],[-1620.0833176699705,2229.8533880979076,1956.2066987911328]],
+					[[-621.7833713935154,2971.493500818643,49.16098752175943],[-1243.5667427870285,2769.4638366627923,1107.002042513259]],
+					[[-621.7833713935154,2971.493500818643,49.16098752175943],[-1779.1519619147205,2448.792594150308,0]],
+					[[-1779.1519619147205,2448.792594150308,0],[-1243.5667427870285,2769.4638366627923,1107.002042513259]],
+					[[-2249.633371341231,1384.7319183313994,2164.843097504758],[-1620.0833176699705,2229.8533880979076,1956.2066987911328]],
+					[[-2249.633371341231,1384.7319183313994,2164.843097504758],[-1243.5667427870321,1711.6227816712894,2818.624824184553]],
+					[[-621.7833713935154,855.8113908356414,3472.4065508643466],[-1243.5667427870321,1711.6227816712894,2818.624824184553]],
+					[[-1779.151961914748,578.0815150175213,3026.874109167793],[-1243.5667427870321,1711.6227816712894,2818.624824184553]],
+					[[0,0,3659.663107439707],[-1006.0666285542079,-326.8908633398989,3472.4065508643457]],
+					[[-3018.1998856626215,-326.89086333988706,1107.00204251326],[-2878.728345529142,-935.3555395663441,0]],
+					[[-2878.728345529142,-935.3555395663441,0],[-2633.9166285019287,-1509.5931175154356,1107.002042513259]],
+					[[3018.199885662619,-326.89086333990167,1107.002042513259],[2621.349872596708,-851.7282043242893,1956.2066987911328]],
+					[[3018.199885662619,-326.89086333990167,1107.002042513259],[2633.9166285019264,202.0296641558509,2164.843097504758]],
+					[[2012.133257108415,-1711.6227816713038,2164.8430975047595],[2012.133257108411,-653.7817266797988,2818.624824184552]],
+					[[2621.349872596708,-851.7282043242893,1956.2066987911328],[2012.133257108415,-1711.6227816713038,2164.8430975047595]],
+					[[-2878.728345529122,935.3555395663951,1156.1630300350205],[-2249.633371341231,1384.7319183313994,2164.843097504758]],
+					[[-2878.728345529122,935.3555395663951,1156.1630300350205],[-2633.9166285019287,202.02966415586275,2164.8430975047595]],
+					[[-2012.1332571084135,-1711.6227816712894,2164.843097504758],[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]],
+					[[-2012.1332571084135,-1711.6227816712894,2164.843097504758],[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]],
+					[[-1779.1519619147641,-2448.7925941502767,1156.1630300350205],[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]],
+					[[0,1870.7110791327584,3026.874109167793],[-621.7833713935154,855.8113908356414,3472.4065508643466]],
+					[[0,1870.7110791327584,3026.874109167793],[-1243.5667427870321,1711.6227816712894,2818.624824184553]],
+					[[2012.133257108415,-1711.6227816713038,2164.8430975047595],[1006.0666285542037,-2442.5729733228973,2164.843097504758]],
+					[[2012.133257108415,-1711.6227816713038,2164.8430975047595],[1779.1519619147455,-2448.7925941502913,1156.1630300350205]],
+					[[2249.633371341245,1384.7319183313923,2164.8430975047595],[1620.0833176699705,2229.8533880979057,1956.2066987911328]],
+					[[1620.0833176699705,2229.8533880979057,1956.2066987911328],[1243.5667427870335,1711.6227816712894,2818.624824184552]],
+					[[-1006.0666285542079,-326.8908633398989,3472.4065508643457],[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]],
+					[[0,0,3659.663107439707],[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]],
+					[[-621.7833713935245,-2971.493500818648,1107.00204251326],[-4.0142582611039987e-11,-3026.874109167806,0]],
+					[[621.7833713935099,-2971.493500818646,1107.002042513259],[-4.0142582611039987e-11,-3026.874109167806,0]],
+					[[621.7833713935099,-2971.493500818646,1107.002042513259],[-621.7833713935245,-2971.493500818648,1107.00204251326]],
+					[[-2249.633371341231,1384.7319183313994,2164.843097504758],[-2249.633371341229,2038.5136450111956,1107.002042513259]],
+					[[621.7833713935172,2971.493500818643,49.16098752175943],[-621.7833713935154,2971.493500818643,49.16098752175943]],
+					[[1.277263992169454e-11,3026.874109167803,1156.1630300350205],[-621.7833713935154,2971.493500818643,49.16098752175943]],
+					[[-621.7833713935154,2567.4341725069353,2164.843097504758],[-1243.5667427870285,2769.4638366627923,1107.002042513259]],
+					[[621.7833713935172,2567.4341725069353,2164.843097504758],[1620.0833176699705,2229.8533880979057,1956.2066987911328]],
+					[[1620.0833176699705,2229.8533880979057,1956.2066987911328],[1243.5667427870335,2769.4638366627887,1107.002042513259]],
+					[[621.7833713935172,2567.4341725069353,2164.843097504758],[1243.5667427870335,2769.4638366627887,1107.002042513259]],
+					[[1006.0666285542037,-2442.5729733228973,2164.843097504758],[0,-2756.2503675472317,1956.2066987911328]],
+					[[621.7833713935099,-2971.493500818646,1107.002042513259],[0,-2756.2503675472317,1956.2066987911328]],
+					[[621.7833713935172,2567.4341725069353,2164.843097504758],[1.277263992169454e-11,3026.874109167803,1156.1630300350205]],
+					[[1.277263992169454e-11,3026.874109167803,1156.1630300350205],[-621.7833713935154,2567.4341725069353,2164.843097504758]],
+					[[621.7833713935172,2567.4341725069353,2164.843097504758],[-621.7833713935154,2567.4341725069353,2164.843097504758]],
+					[[2249.633371341245,2038.5136450111863,1107.00204251326],[1779.151961914786,2448.7925941502604,0]],
+					[[2249.633371341245,2038.5136450111863,1107.00204251326],[1243.5667427870335,2769.4638366627887,1107.002042513259]],
+					[[1006.0666285542147,-326.89086333990076,3472.4065508643444],[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]],
+					[[-3018.1998856626215,-326.89086333988706,1107.00204251326],[-2633.9166285019287,202.02966415586275,2164.8430975047595]],
+					[[2633.9166285019264,-1509.5931175154503,1107.00204251326],[2012.133257108415,-1711.6227816713038,2164.8430975047595]],
+					[[2633.9166285019264,-1509.5931175154503,1107.00204251326],[2621.349872596708,-851.7282043242893,1956.2066987911328]],
+					[[3018.199885662619,-326.89086333990167,1107.002042513259],[2633.9166285019264,-1509.5931175154503,1107.00204251326]],
+					[[2878.728345529135,935.3555395663697,1156.1630300350205],[2633.9166285019264,202.0296641558509,2164.843097504758]],
+					[[2878.728345529135,935.3555395663697,1156.1630300350205],[2633.9166285019373,1509.5931175154356,49.160987521760575]],
+					[[3018.199885662619,326.89086333989434,49.16098752175943],[2633.9166285019373,1509.5931175154356,49.160987521760575]],
+					[[-2012.1332571084135,-653.7817266797869,2818.624824184552],[-1099.576383614374,-1513.4370545838972,3026.874109167793]],
+					[[-2012.1332571084135,-653.7817266797869,2818.624824184552],[-2012.1332571084135,-1711.6227816712894,2164.843097504758]],
+					[[-2012.1332571084135,-1711.6227816712894,2164.843097504758],[-1099.576383614374,-1513.4370545838972,3026.874109167793]],
+					[[-1099.576383614374,-1513.4370545838972,3026.874109167793],[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]],
+					[[-2633.9166285019287,-1509.5931175154356,1107.002042513259],[-2249.6333713412364,-2038.5136450111863,49.16098752175943]],
+					[[-2249.6333713412364,-2038.5136450111863,49.16098752175943],[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]],
+					[[-2633.9166285019287,-1509.5931175154356,1107.002042513259],[-1779.1519619147641,-2448.7925941502767,1156.1630300350205]],
+					[[-1099.576383614374,-1513.4370545838972,3026.874109167793],[-1006.0666285542079,-326.8908633398989,3472.4065508643457]],
+					[[-2878.728345529122,935.3555395663951,1156.1630300350205],[-2633.9166285019214,1509.5931175154428,49.16098752175943]],
+					[[-2878.728345529122,935.3555395663951,1156.1630300350205],[-2249.633371341229,2038.5136450111956,1107.002042513259]],
+					[[2633.9166285019373,1509.5931175154356,49.160987521760575],[2249.633371341245,2038.5136450111863,1107.00204251326]],
+					[[-2633.9166285019287,-1509.5931175154356,1107.002042513259],[-2012.1332571084135,-1711.6227816712894,2164.843097504758]],
+					[[-2621.349872596707,-851.7282043242893,1956.2066987911328],[-2012.1332571084135,-1711.6227816712894,2164.843097504758]],
+					[[-2633.9166285019287,202.02966415586275,2164.8430975047595],[-2621.349872596707,-851.7282043242893,1956.2066987911328]],
+					[[-2621.349872596707,-851.7282043242893,1956.2066987911328],[-2012.1332571084135,-653.7817266797869,2818.624824184552]],
+					[[0,1870.7110791327584,3026.874109167793],[-621.7833713935154,2567.4341725069353,2164.843097504758]],
+					[[1.277263992169454e-11,3026.874109167803,1156.1630300350205],[-1243.5667427870285,2769.4638366627923,1107.002042513259]],
+					[[2249.633371341245,2038.5136450111863,1107.00204251326],[1620.0833176699705,2229.8533880979057,1956.2066987911328]],
+					[[2633.9166285019373,1509.5931175154356,49.160987521760575],[1779.151961914786,2448.7925941502604,0]],
+					[[621.7833713935172,2567.4341725069353,2164.843097504758],[1243.5667427870335,1711.6227816712894,2818.624824184552]],
+					[[-1099.576383614374,-1513.4370545838972,3026.874109167793],[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]],
+					[[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552],[-1099.576383614374,-1513.4370545838972,3026.874109167793]],
+					[[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552],[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]],
+					[[-3018.1998856626215,326.8908633399071,49.160987521760575],[-2878.728345529142,-935.3555395663441,0]],
+					[[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552],[-1006.0666285542153,-2442.5729733228973,2164.8430975047595]],
+					[[-2878.728345529142,-935.3555395663441,0],[-2249.6333713412364,-2038.5136450111863,49.16098752175943]],
+					[[-4.0142582611039987e-11,-3026.874109167806,0],[-1243.5667427870394,-2769.463836662794,49.160987521760575]],
+					[[2633.9166285019264,-1509.5931175154503,1107.00204251326],[1779.1519619147455,-2448.7925941502913,1156.1630300350205]],
+					[[0,-2756.2503675472317,1956.2066987911328],[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]],
+					[[1006.0666285542037,-2442.5729733228973,2164.843097504758],[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]],
+					[[1099.576383614374,-1513.4370545839008,3026.874109167793],[1006.0666285542147,-326.89086333990076,3472.4065508643444]],
+					[[2012.133257108411,-653.7817266797988,2818.624824184552],[1099.576383614374,-1513.4370545839008,3026.874109167793]],
+					[[1099.576383614374,-1513.4370545839008,3026.874109167793],[-1.824662845956363e-12,-1057.8410549915034,3472.4065508643457]],
+					[[2012.133257108415,-1711.6227816713038,2164.8430975047595],[1099.576383614374,-1513.4370545839008,3026.874109167793]],
+					[[-3018.1998856626215,326.8908633399071,49.160987521760575],[-2633.9166285019214,1509.5931175154428,49.16098752175943]],
+					[[621.7833713935099,-2971.493500818646,1107.002042513259],[1243.5667427870262,-2769.463836662794,49.16098752175943]],
+					[[-2249.6333713412364,-2038.5136450111863,49.16098752175943],[-1243.5667427870394,-2769.463836662794,49.160987521760575]],
+					[[1243.5667427870262,-2769.463836662794,49.16098752175943],[-4.0142582611039987e-11,-3026.874109167806,0]],
+					[[1099.576383614374,-1513.4370545839008,3026.874109167793],[-5.473988537869089e-12,-2115.6821099829986,2818.624824184552]],
+					[[1099.576383614374,-1513.4370545839008,3026.874109167793],[1006.0666285542037,-2442.5729733228973,2164.843097504758]],
+					[[621.7833713935172,2567.4341725069353,2164.843097504758],[0,1870.7110791327584,3026.874109167793]]
+				].map(points=>points.map(([a,b,c])=>[b,c,a]).map(point=>new THREE.Vector3(...point.map(v=>v * SCALE))));
+				uniqueEdges = uniqueEdges.filter((edge, idx)=>!([0, 1, 2, 41, 43, 48, 49, 95, 96, 103, 106, 107, 108, 114, 115, 122, 123, 134, 141, 142].indexOf(idx) != -1))
+
 				uniqueEdges.forEach(ue => {
-					drawCylinder(ue[0], ue[1], scene);
-					let distance = ue[0].distanceTo(ue[1]);
-					let LEDCount = Math.floor((distance - LEDDistance) / LEDDistance);
-					let offsetDistance = (distance - (LEDCount * LEDDistance)) / 2;
-					let directionVector = ue[1].clone().sub(ue[0]).normalize();
-					let offsetVector = directionVector.clone().multiplyScalar(offsetDistance);
-					let LEDVector = directionVector.clone().multiplyScalar(LEDDistance);
-					for (let idx = 0; idx <= LEDCount; idx++) {
-						let pointLight = new THREE.PointLight(new THREE.Color(`hsl(${360/LEDCount*idx}, 100%, 50%)`));
-						pointLight.position.copy(ue[0].clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
-						helper = new THREE.PointLightHelper(pointLight, 10);
-						LEDs.push(helper);
-						// scene.add(pointLight);
-						scene.add(helper)
-					}
+					let cylinder = createCylinder(ue[0], ue[1], scene);
+					cylinders.push(cylinder);
 				});
 
-				render();
+				let mergedCylinders = THREE.BufferGeometryUtils.mergeBufferGeometries( cylinders );
+				// scene.add(new THREE.Mesh(mergedCylinders, tubeMaterial));
+
+				nLights = lights.length;
+
+				const _color = new THREE.Color();
+				color = new Float32Array( nLights * 3 );
+
+				colorInstancedBufferAttribute = new THREE.InstancedBufferAttribute( color, 3 );
+				geometry.setAttribute( 'color', colorInstancedBufferAttribute );
+				material.vertexColors = true;
+
+				const lightInstances = new THREE.InstancedMesh( geometry, material, nLights );
+
+				lights.forEach((light, idx)=>{
+					light.updateMatrix();
+					lightInstances.setMatrixAt(idx, light.matrix);
+					light.material.dispose();
+					light.meta.index = idx;
+				});
+
+				// find LEDs with only one connection (must be an end)
+				// then find all other end LEDs that are close to it, and connect them
+				let endLEDs = lights.filter(l => l.meta.connections.size == 1);
+				for (let idx = 0; idx < endLEDs.length; idx++) {
+					let currentLED = endLEDs[idx];
+					let closeLEDs = endLEDs.filter(led =>  currentLED.position.distanceTo(led.position) <= LEDDistance * 2 && led.uuid != currentLED.uuid);
+					closeLEDs.forEach(led => currentLED.meta.connections.set(led.meta.connections.entries().next().value[0], led));
+				}
+
+				updateParticles();
+
+				scene.add( lightInstances );
 			}
 
 			function onWindowResize() {
@@ -782,27 +860,75 @@
 
 				renderer.setSize( window.innerWidth, window.innerHeight );
 
-				controls.handleResize();
+				resizeVideoCanvas();
 
 				render();
 			}
-
+			function getPowerUsage() {
+				// power in W per chanel at full
+				let ppc = [
+					9/30/3,
+					9/30/3,
+					9/30/3
+				];
+				let total = 0;
+				for (idx = 0; idx < color.length; idx++)
+					total += (color[idx] || 0) * ppc[idx%3];
+				return total;
+			}
+			function drawPowerUsage() {
+				let multiplier = power.height/2000;
+				power.width = powerHistory;
+				let pCtx = power.getContext("2d");
+				pCtx.fillStyle = "white";
+				pCtx.beginPath();
+				pCtx.moveTo(0, power.height);
+				let idx = 0;
+				for (; idx < powerHistory; idx++) {
+					pCtx.lineTo(idx, power.height - powerData[(powerDataIndex + idx) % powerHistory] * multiplier)
+				}
+				pCtx.lineTo(idx, power.height);
+				pCtx.fill();
+			}
 			function animate(timestamp) {
+				requestAnimationFrame( animate );
 				let diff = timestamp - lastFrame;
 				lastFrame = timestamp;
-				requestAnimationFrame( animate );
 				controls.update();
-				LEDs.forEach(helper=>{
-					let led = helper.light;
-					led.color.offsetHSL( diff / 1000, 0, 0 );
-					helper.update();
-				});
+				let offset = diff/5000;
+				(visualizations[selector.value])(offset, timestamp);
+				// clamp the color array to [0-1]. Some THREE.Color functions do not enforce this,
+				// but some of our logic requires it
+				color.forEach((v, idx) => color[idx] = v > 1 ? 1 : v);
+				powerData[(powerDataIndex++)%powerHistory] = getPowerUsage();
+				drawPowerUsage();
+				// do stuff
+				colorInstancedBufferAttribute.needsUpdate = true;
 				render();
 			}
 
 			function render() {
 				renderer.render( scene, camera );
 			}
+		</script>
+		<script>
+			let editor = ace.edit("customCode");
+			customCode.editor = editor;
+			const resizeObserver = new ResizeObserver(entries => {
+				editor.resize()
+			});
+			resizeObserver.observe(customCode);
+		    editor.setTheme("ace/theme/monokai");
+		    editor.session.setMode("ace/mode/javascript");
+			let searchParams = new URLSearchParams(window.location.search);
+			if (searchParams.has("code")) {
+				editor.setValue(searchParams.get("code"));
+				selector.value = "custom";
+				updateTools();
+			}
+			shareCode.addEventListener("click", function() {
+				window.location.search = `code=${encodeURIComponent(editor.getValue())}`;
+			})
 		</script>
 	</body>
 </html>
