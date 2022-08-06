@@ -254,6 +254,13 @@ for (let i = 0; i < nLights; i++) {
 				color: 0xffffff,
 				side: THREE.BackSide,
 			});
+			const shapes = {
+				"rods": [],
+				"pentagons": [],
+				"pentastars": [],
+				"hexagons": [],
+				"hexastars": [],
+			}
 
 			function updateTools() {
 				configuration.querySelector(".active")?.classList.remove("active");
@@ -611,11 +618,13 @@ for (let i = 0; i < nLights; i++) {
 					// construct "lights" for this particular cylinder. Later we convert these to instances.
 					let directionA = Symbol();
 					let directionB = Symbol();
+					let rod = [];
 					for (let idx = 0; idx <= LEDCount; idx++) {
 						let lightMesh = new THREE.Mesh(geometry, material);
 						lightMesh.position.copy(vstart.clone().add(offsetVector).add(LEDVector.clone().multiplyScalar(idx)));
 						lightMesh.lookAt(vend);
 						lights.push(lightMesh);
+						rod.push(lightMesh);
 						let {x:y, y:z, z:x} = lightMesh.position;
 						let angleX = Math.atan2(y, x);
 						let angleZ = Math.atan2(Math.sqrt(x**2 + y**2), z);
@@ -639,6 +648,7 @@ for (let i = 0; i < nLights; i++) {
 							lights[lights.length - 2].meta.connections.set(directionB, lightMesh);
 						}
 					}
+					shapes["rods"].push(rod);
 
 					return cylinder;
 				}
@@ -918,16 +928,26 @@ for (let i = 0; i < nLights; i++) {
 				editor.resize()
 			});
 			resizeObserver.observe(customCode);
-		    editor.setTheme("ace/theme/monokai");
-		    editor.session.setMode("ace/mode/javascript");
+			editor.setTheme("ace/theme/monokai");
+			editor.session.setMode("ace/mode/javascript");
+			function b64EncodeUnicode(str) {
+				return btoa(encodeURIComponent(str));
+			}
+			function UnicodeDecodeB64(str) {
+				return decodeURIComponent(atob(str));
+			}
 			let searchParams = new URLSearchParams(window.location.search);
 			if (searchParams.has("code")) {
-				editor.setValue(searchParams.get("code"));
+				let code = searchParams.get("code");
+				if (searchParams.has("b64")) {
+					code = UnicodeDecodeB64(code);
+				}
+				editor.setValue(code);
 				selector.value = "custom";
 				updateTools();
 			}
 			shareCode.addEventListener("click", function() {
-				window.location.search = `code=${encodeURIComponent(editor.getValue())}`;
+				window.location.search = `code=${b64EncodeUnicode(editor.getValue())}&b64=true`;
 			})
 		</script>
 	</body>
