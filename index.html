@@ -256,10 +256,52 @@ for (let i = 0; i < nLights; i++) {
 			});
 			const shapes = {
 				"rods": [],
-				"pentagons": [],
-				"pentastars": [],
-				"hexagons": [],
-				"hexastars": [],
+				"pentagons": [
+					[ 56, 69, 93, 63, 95 ],
+					[ 3, 76, 105, 103, 77 ],
+					[ 11, 101, 88, 55, 34 ],
+					[ 108, 117, 28, 102, 53 ],
+					[ 133, 43, 92, 31, 128 ]
+				],
+				"pentastars": [
+					[ 57, 58, 68, 64, 62 ],
+					[ 120, 118, 29, 30, 119 ],
+					[ 132, 96, 97, 32, 33 ],
+					[ 4, 5, 75, 104, 78 ],
+					[ 36, 46, 89, 72, 35 ]
+				],
+				"hexagons": [
+					[ 34, 70, 56, 100, 123, 2 ],
+					[ 55, 52, 53, 15, 69, 70 ],
+					[ 88, 126, 128, 81, 108, 52 ],
+					[ 101, 22, 77, 86, 133, 126 ],
+					[ 11, 2, 13, 42, 3, 22 ],
+					[ 100, 95, 65 ],
+					[ 65, 63, 48 ],
+					[ 15, 102, 60, 138, 48, 93 ],
+					[ 60, 28, 111 ],
+					[ 81, 31, 40, 140, 111, 117 ],
+					[ 40, 92, 139 ],
+					[ 86, 103, 7, 24, 139, 43 ],
+					[ 7, 105, 18 ],
+					[ 18, 76, 42 ]
+				],
+				"hexastars": [
+					[ 1, 84, 85, 121, 144, 0 ],
+					[ 50, 51, 16, 17, 71, 54 ],
+					[ 114, 124, 125, 110, 109, 107 ],
+					[ 136, 134, 135, 137, 143, 142 ],
+					[ 10, 9, 14, 37, 21, 12 ],
+					[ 98, 99, 122, 94 ],
+					[ 66, 67, 49, 47 ],
+					[ 116, 79, 80, 61, 59, 115 ],
+					[ 127, 73, 74, 129 ],
+					[ 113, 82, 83, 41, 39, 112 ],
+					[ 130, 90, 91, 141 ],
+					[ 45, 87, 131, 25, 23, 44 ],
+					[ 8, 6, 19, 20 ],
+					[ 27, 26, 106, 38 ]
+				],
 			}
 
 			function updateTools() {
@@ -828,6 +870,11 @@ for (let i = 0; i < nLights; i++) {
 					let cylinder = createCylinder(ue[0], ue[1], scene);
 					cylinders.push(cylinder);
 				});
+
+				const shapeInit = (indexArrays) => indexArrays.map(arr => arr.map(idx => shapes["rods"][idx]));
+				for (shape of ["pentagons", "pentastars", "hexagons", "hexastars"]) {
+					shapes[shape] = shapeInit(shapes[shape]);
+				}
 
 				let mergedCylinders = THREE.BufferGeometryUtils.mergeBufferGeometries( cylinders );
 				// scene.add(new THREE.Mesh(mergedCylinders, tubeMaterial));
