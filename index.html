@@ -34,6 +34,10 @@
 				top: 0;
 				right: 0;
 			}
+			#videoMappingTheta {
+				width: 100%;
+				margin: 0;
+			}
 			#configuration > * {
 				display: none;
 			}
@@ -89,6 +93,7 @@
 						<option value="squished">Squished</option>
 					</select>
 				</div>
+				<input type="range" id="videoMappingTheta" value="0" min="0" max="6.28" step="0.001">
 			</div>
 			<div data-tool="randomWalk">
 				<dl>
@@ -209,9 +214,11 @@ for (let i = 0; i < nLights; i++) {
 					let fileURL = URL.createObjectURL(file)
 					videoPlayer.src = fileURL;
 				}
-				videoPlayer.addEventListener('loadedmetadata', _=>setTimeout(resizeVideoCanvas, 0), false);
+				//videoPlayer.addEventListener('loadedmetadata', _=>setTimeout(resizeVideoCanvas, 0), false);
+				videoPlayer.addEventListener('loadeddata', _=>setTimeout(resizeVideoCanvas, 0), false);
 				videoPicker.addEventListener('change', playSelectedFile, false);
 				videoSelector.addEventListener('change', setVideoFile, false);
+				videoMappingTheta.addEventListener('input', resizeVideoCanvas, false);
 				resizeVideoCanvas();
 				if (videoSelector.value) {
 					setVideoFile();
@@ -328,8 +335,8 @@ for (let i = 0; i < nLights; i++) {
 			}
 			nWalkers.addEventListener("input", updateParticles, false);
 			function mapCanvasToDome(ctx, map) {
-				let frame = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
-				let data = Array.from(frame.data).map(v => v/256);
+				const frame = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
+				const data = Array.from(frame.data).map(v => v/256);
 				const _color = new THREE.Color();
 				let H, W;
 				let mappingCtx = null;
@@ -341,16 +348,20 @@ for (let i = 0; i < nLights; i++) {
 					mappingCtx.fillStyle = "white";
 				}
 				for (let i = 0; i < nLights; i++) {
+					const theta = videoMappingTheta.valueAsNumber;
 					switch (map) {
 						case "unfolded": {
-								let {angleX, angleZ} = lights[i].meta;
+								const offset = 2.20;
+								const {angleX, angleZ} = lights[i].meta;
 								H = Math.floor((minAngleZ + angleZ)/(maxAngleZ - minAngleZ)*ctx.canvas.height);
-								W = Math.floor(ctx.canvas.width - (Math.PI+angleX)/(2*Math.PI)*ctx.canvas.width);
+								W = Math.floor(ctx.canvas.width - ((3*Math.PI+angleX-theta+offset)%(2*Math.PI))/(2*Math.PI)*ctx.canvas.width);
 							}
 							break;
 						case "squished": {
-								let {x, y, z, angleX, angleZ} = lights[i].meta;
-								H = Math.floor(ctx.canvas.height/2+Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
+								const offset = 0.63;
+								let {angleX, angleZ} = lights[i].meta;
+								angleX += theta + offset;
+								H = Math.floor(ctx.canvas.height/2 + Math.sin(Math.PI-angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
 								W = Math.floor(ctx.canvas.width/2 + Math.cos(Math.PI+angleX) * (angleZ - minAngleZ)/(maxAngleZ - minAngleZ) * ctx.canvas.height/2);
 							}
 							break;
@@ -358,7 +369,7 @@ for (let i = 0; i < nLights; i++) {
 					if (mappingCtx) {
 						mappingCtx.fillRect(W, H, 1, 1);
 					}
-					let idx = H*ctx.canvas.width*4+W*4;
+					const idx = H*ctx.canvas.width*4+W*4;
 					_color.fromArray(data, idx);
 					_color.toArray(color, i * 3);
 				}
